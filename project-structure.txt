@@ -1,0 +1,27 @@
+.
+├── backend
+│   ├── agents
+│   │   ├── challenge_agent.py
+│   │   ├── dag_builder_agent.py
+│   │   ├── research_agent.py
+│   │   └── tutor_agent.py
+│   ├── core
+│   │   ├── __init__.py
+│   │   └── config.py
+│   ├── db.py
+│   ├── main.py
+│   ├── models.py
+│   ├── project-structure.txt
+│   ├── requirements.txt
+│   ├── routes
+│   │   ├── challenges.py
+│   │   ├── paths.py
+│   │   └── progress.py
+│   ├── schemas.py
+│   └── services
+│       ├── llm_client.py
+│       └── opik_client.py
+├── frontend
+└── project-structure.txt
+
+7 directories, 18 files

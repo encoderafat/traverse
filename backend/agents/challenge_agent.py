@@ -56,7 +56,7 @@ opik_tracer = create_opik_tracer(
 # -----------------------------------------------------------------------------
 
 def run_challenge_agent(
-    user_id: int,
+    user_id: str,
     path_id: int,
     node: Dict[str, Any],
     domain_hint: Optional[str],

@@ -54,7 +54,7 @@ opik_tracer = create_opik_tracer(
 # -----------------------------------------------------------------------------
 
 def run_research_agent(
-    user_id: int,
+    user_id: str,
     goal_title: str,
     goal_description: Optional[str],
     domain_hint: Optional[str],

@@ -64,7 +64,7 @@ opik_tracer = create_opik_tracer(
 # -----------------------------------------------------------------------------
 
 def run_dag_builder_agent(
-    user_id: int,
+    user_id: str,
     goal_title: str,
     competencies: Dict[str, Any],
     user_background: Optional[str],

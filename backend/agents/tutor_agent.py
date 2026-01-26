@@ -58,7 +58,7 @@ opik_tracer = create_opik_tracer(
 # -----------------------------------------------------------------------------
 
 def run_tutor_agent(
-    user_id: int,
+    user_id: str,
     challenge: Dict[str, Any],
     user_answer: str,
     prior_attempts_summary: Optional[str] = None,
