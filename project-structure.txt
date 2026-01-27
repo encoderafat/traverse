@@ -1,12 +1,28 @@
 .
 ├── backend
+│   ├── __pycache__
+│   │   └── models.cpython-312.pyc
 │   ├── agents
 │   │   ├── challenge_agent.py
 │   │   ├── dag_builder_agent.py
 │   │   ├── research_agent.py
 │   │   └── tutor_agent.py
+│   ├── alembic
+│   │   ├── __pycache__
+│   │   │   └── env.cpython-312.pyc
+│   │   ├── env.py
+│   │   ├── README
+│   │   ├── script.py.mako
+│   │   └── versions
+│   │       ├── __pycache__
+│   │       │   ├── 696eee02c3dd_switch_user_id_to_uuid.cpython-312.pyc
+│   │       │   └── 7a5eb326d9ee_init_db.cpython-312.pyc
+│   │       ├── 696eee02c3dd_switch_user_id_to_uuid.py
+│   │       └── 7a5eb326d9ee_init_db.py
+│   ├── alembic.ini
 │   ├── core
 │   │   ├── __init__.py
+│   │   ├── auth.py
 │   │   └── config.py
 │   ├── db.py
 │   ├── main.py
@@ -22,6 +38,42 @@
 │       ├── llm_client.py
 │       └── opik_client.py
 ├── frontend
+│   ├── app
+│   │   ├── (app)
+│   │   │   ├── layout.tsx
+│   │   │   └── projects
+│   │   │       ├── [projectId]
+│   │   │       │   └── page.tsx
+│   │   │       ├── new
+│   │   │       │   └── page.tsx
+│   │   │       └── page.tsx
+│   │   ├── (auth)
+│   │   │   └── signin
+│   │   │       └── page.tsx
+│   │   ├── api
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── eslint.config.mjs
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── auth.ts
+│   │   ├── challenges.ts
+│   │   └── paths.ts
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   └── tsconfig.json
 └── project-structure.txt
 
-7 directories, 18 files
+22 directories, 55 files
