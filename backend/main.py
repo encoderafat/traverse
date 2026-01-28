@@ -1,7 +1,9 @@
 # main.py
 from fastapi import FastAPI
 from routes import paths, challenges, progress
-from db import Base, engine  # define engine connecting to Postgres
+from models import Base
+from db import engine
+
 
 app = FastAPI(title="Traverse API")
 
