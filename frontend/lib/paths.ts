@@ -23,3 +23,13 @@ export async function createPath(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export type Project = {
+  id: number;
+  goal_title: string;
+  summary: string;
+};
+
+export async function fetchProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>("/api/paths");
+}

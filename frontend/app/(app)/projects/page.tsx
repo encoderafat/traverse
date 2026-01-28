@@ -2,56 +2,50 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchPaths, LearningPath } from "@/lib/paths";
+import { fetchProjects, Project } from "@/lib/paths";
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<LearningPath[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPaths()
+    fetchProjects()
       .then(setProjects)
-      .catch((err) => setError(err.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <p className="text-gray-500">Loading projects…</p>;
-  }
-
-  if (error) {
-    return <p className="text-red-600">{error}</p>;
-  }
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (error) return <div className="p-6 text-red-600">{error}</div>;
 
   return (
-    <div>
+    <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Learning Projects</h1>
-
+        <h1 className="text-2xl font-semibold">Your Learning Projects</h1>
         <Link
           href="/projects/new"
-          className="rounded-md bg-black text-white px-4 py-2 text-sm hover:bg-gray-900"
+          className="px-4 py-2 rounded bg-pink-600 text-white hover:bg-pink-700"
         >
           New Project
         </Link>
       </div>
 
       {projects.length === 0 ? (
-        <p className="text-gray-600">
-          You haven’t created any learning projects yet.
+        <p className="text-gray-500">
+          You haven’t created any learning paths yet.
         </p>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {projects.map((p) => (
             <Link
               key={p.id}
               href={`/projects/${p.id}`}
-              className="block border border-gray-200 rounded-lg p-4 hover:border-gray-300"
+              className="border rounded p-4 hover:shadow-sm transition"
             >
-              <h2 className="font-medium">{p.goal_title}</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {p.summary || "No summary yet"}
+              <h2 className="font-medium text-lg">{p.goal_title}</h2>
+              <p className="text-gray-600 text-sm mt-1">
+                {p.summary || "No summary"}
               </p>
             </Link>
           ))}
