@@ -66,3 +66,24 @@ export async function fetchProject(projectId: string) {
     }[];
   }>(`/api/paths/${projectId}`);
 }
+
+export type NodeProgress = {
+  node_id: number;
+  title: string;
+  status: "not_started" | "in_progress" | "completed" | "blocked";
+  last_score: number | null;
+  attempts_count: number;
+};
+
+export type PathProgress = {
+  path_id: number;
+  completion_ratio: number; // 0..1
+  nodes: NodeProgress[];
+};
+
+export async function fetchPathProgress(
+  projectId: string
+): Promise<PathProgress> {
+  return apiFetch(`/api/paths/${projectId}/progress`);
+}
+
