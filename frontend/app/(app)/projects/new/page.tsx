@@ -2,76 +2,87 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPath } from "@/lib/paths";
+import { createProject } from "@/lib/paths";
 
 export default function NewProjectPage() {
   const router = useRouter();
-
-  const [goalTitle, setGoalTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
     try {
-      await createPath({
-        goal_title: goalTitle,
-        goal_description: description || undefined,
+      const res = await createProject({
+        goal_title: data.get("goal_title") as string,
+        goal_description: data.get("goal_description") as string,
+        domain_hint: data.get("domain_hint") as string,
+        level: data.get("level") as string,
+        user_background: data.get("user_background") as string,
       });
 
-      router.push("/projects");
+      router.push(`/projects/${res.id}`);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold mb-4">
-        Create a learning project
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className="text-2xl font-semibold mb-6">
+        Create a Learning Project
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Goal
-          </label>
-          <input
-            required
-            value={goalTitle}
-            onChange={(e) => setGoalTitle(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-            placeholder="e.g. Learn machine learning"
-          />
-        </div>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input
+          name="goal_title"
+          required
+          placeholder="Goal (e.g. Learn Machine Learning)"
+          className="w-full border rounded px-3 py-2"
+        />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Description (optional)
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-            rows={4}
-          />
-        </div>
+        <textarea
+          name="goal_description"
+          placeholder="What do you want to achieve?"
+          className="w-full border rounded px-3 py-2"
+        />
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        <input
+          name="domain_hint"
+          placeholder="Domain (e.g. software, music, fitness)"
+          className="w-full border rounded px-3 py-2"
+        />
+
+        <select
+          name="level"
+          className="w-full border rounded px-3 py-2"
+        >
+          <option value="">Level</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+
+        <textarea
+          name="user_background"
+          placeholder="Your background / constraints"
+          className="w-full border rounded px-3 py-2"
+        />
+
+        {error && <p className="text-red-600">{error}</p>}
 
         <button
           disabled={loading}
-          className="rounded-md bg-black text-white px-4 py-2 text-sm hover:bg-gray-900 disabled:opacity-50"
+          className="bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
         >
-          {loading ? "Creating…" : "Create project"}
+          {loading ? "Creating…" : "Create Project"}
         </button>
       </form>
     </div>
