@@ -47,6 +47,55 @@ Rules:
 """
 
 # -----------------------------------------------------------------------------
+# Evaluation Prompt
+# -----------------------------------------------------------------------------
+
+DAG_EVAL_SYSTEM_PROMPT = """
+You are an expert curriculum evaluator.
+
+You are evaluating a learning DAG for a user goal.
+
+Assess the DAG on:
+1. Structural correctness (acyclic, valid prerequisites)
+2. Learning progression (concepts build logically)
+3. Coverage (important areas not missing or duplicated)
+
+Score each dimension from 0-5.
+Provide an overall score between 0.0 and 1.0.
+
+Output STRICT JSON:
+{
+  "dimension_scores": [
+    { "name": "Structure", "score": 0-5, "comment": "..." },
+    { "name": "Progression", "score": 0-5, "comment": "..." },
+    { "name": "Coverage", "score": 0-5, "comment": "..." }
+  ],
+  "overall_score": 0.0,
+  "summary": "Brief evaluation summary"
+}
+"""
+
+def eval_dag_quality(goal_title: str, dag_json: Dict[str, Any]):
+    eval_user_msg = f"""
+User goal: {goal_title}
+
+Generated DAG JSON:
+{json.dumps(dag_json, indent=2)}
+
+Please evaluate this DAG.
+"""
+    try:
+        raw = call_gemini(
+            system_instruction=DAG_EVAL_SYSTEM_PROMPT,
+            user_message=eval_user_msg,
+        )
+        parsed = json.loads(raw)
+        return parsed.get("overall_score", 0.0), parsed
+    except Exception:
+        return 0.5, {"error": "dag_evaluation_failed"}
+
+
+# -----------------------------------------------------------------------------
 # Opik Tracer (module-level singleton)
 # -----------------------------------------------------------------------------
 
@@ -125,16 +174,14 @@ def run_dag_builder_agent(
                     },
                 )
 
-        # ---- Evaluation hook (future) ---------------------------------------
-        # Example:
-        #
-        # score, explanation = eval_dag_quality(goal_title, parsed)
-        # if span:
-        #     span.add_evaluation(
-        #         name="dag_quality",
-        #         score=score,
-        #         details=explanation,
-        #     )
+        score, details = eval_dag_quality(goal_title, parsed)
+        if span:
+            span.add_evaluation(
+                name="dag_quality",
+                score=score,
+                details=details,
+            )
+
 
         return parsed
 

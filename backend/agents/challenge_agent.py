@@ -44,6 +44,54 @@ Output STRICT JSON:
 """
 
 # -----------------------------------------------------------------------------
+# Evaluation Prompt
+# -----------------------------------------------------------------------------
+
+CHALLENGE_EVAL_SYSTEM_PROMPT = """
+You are evaluating a competency challenge.
+
+Assess:
+1. Alignment with the learning node
+2. Real-world realism
+3. Appropriateness of difficulty
+
+Score each from 0-5.
+Provide an overall score (0.0–1.0).
+
+Output STRICT JSON:
+{
+  "dimension_scores": [
+    { "name": "Alignment", "score": 0-5, "comment": "..." },
+    { "name": "Realism", "score": 0-5, "comment": "..." },
+    { "name": "Difficulty", "score": 0-5, "comment": "..." }
+  ],
+  "overall_score": 0.0,
+  "summary": "..."
+}
+"""
+
+def eval_challenge_quality(node: Dict[str, Any], challenge_json: Dict[str, Any]):
+    eval_user_msg = f"""
+Learning node:
+{json.dumps(node, indent=2)}
+
+Generated challenge:
+{json.dumps(challenge_json, indent=2)}
+
+Evaluate this challenge.
+"""
+    try:
+        raw = call_gemini(
+            system_instruction=CHALLENGE_EVAL_SYSTEM_PROMPT,
+            user_message=eval_user_msg,
+        )
+        parsed = json.loads(raw)
+        return parsed.get("overall_score", 0.0), parsed
+    except Exception:
+        return 0.5, {"error": "challenge_eval_failed"}
+
+
+# -----------------------------------------------------------------------------
 # Opik Tracer
 # -----------------------------------------------------------------------------
 
@@ -141,15 +189,15 @@ Create ONE challenge as described in the system prompt, based primarily on the p
                     },
                 )
 
-        # ---- Evaluation hook (future) ---------------------------------------
-        # Example:
-        # score, details = eval_challenge_realism(node, parsed)
-        # if span:
-        #     span.add_evaluation(
-        #         name="challenge_realism",
-        #         score=score,
-        #         details=details,
-        #     )
+        # ---- Evaluation hook ---------------------------------------
+        score, details = eval_challenge_quality(node, parsed)
+        if span:
+            span.add_evaluation(
+                name="challenge_quality",
+                score=score,
+                details=details,
+            )
+
 
         return parsed
 

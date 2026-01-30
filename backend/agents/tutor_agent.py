@@ -43,6 +43,61 @@ Output STRICT JSON:
 """
 
 # -----------------------------------------------------------------------------
+# Evaluation Prompt
+# -----------------------------------------------------------------------------
+
+TUTOR_EVAL_SYSTEM_PROMPT = """
+You are evaluating tutor feedback quality.
+
+Assess:
+1. Grading fairness vs rubric
+2. Clarity and usefulness of feedback
+3. Appropriateness of pass/retry decision
+
+Score each from 0-5.
+Provide overall score (0.0–1.0).
+
+Output STRICT JSON:
+{
+  "dimension_scores": [
+    { "name": "Grading Fairness", "score": 0-5, "comment": "..." },
+    { "name": "Feedback Quality", "score": 0-5, "comment": "..." },
+    { "name": "Decision Appropriateness", "score": 0-5, "comment": "..." }
+  ],
+  "overall_score": 0.0,
+  "summary": "..."
+}
+"""
+
+def eval_tutor_feedback(
+    challenge: Dict[str, Any],
+    user_answer: str,
+    tutor_output: Dict[str, Any],
+):
+    eval_user_msg = f"""
+Challenge:
+{json.dumps(challenge, indent=2)}
+
+User answer:
+{user_answer}
+
+Tutor feedback:
+{json.dumps(tutor_output, indent=2)}
+
+Evaluate the tutor feedback.
+"""
+    try:
+        raw = call_gemini(
+            system_instruction=TUTOR_EVAL_SYSTEM_PROMPT,
+            user_message=eval_user_msg,
+        )
+        parsed = json.loads(raw)
+        return parsed.get("overall_score", 0.0), parsed
+    except Exception:
+        return 0.5, {"error": "tutor_eval_failed"}
+
+
+# -----------------------------------------------------------------------------
 # Opik Tracer
 # -----------------------------------------------------------------------------
 
@@ -135,15 +190,15 @@ Prior attempts summary (optional):
                     },
                 )
 
-        # ---- Evaluation hook (future) ---------------------------------------
-        # Example:
-        # score, details = eval_feedback_helpfulness(challenge, user_answer, parsed)
-        # if span:
-        #     span.add_evaluation(
-        #         name="feedback_helpfulness",
-        #         score=score,
-        #         details=details,
-        #     )
+        # ---- Evaluation hook ---------------------------------------
+        score, details = eval_tutor_feedback(challenge, user_answer, parsed)
+        if span:
+            span.add_evaluation(
+                name="tutor_feedback_quality",
+                score=score,
+                details=details,
+            )
+
 
         return parsed
 
