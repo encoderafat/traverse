@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import List
+
 
 from models import LearningPath, PathNode, PathEdge, NodeProgress, NodeProgressStatus
 from schemas import (
@@ -22,18 +24,21 @@ def create_path(
 ):
     user_uuid = UUID(user_id)
 
-    research = run_research_agent(
+    research_result = run_research_agent(
         user_id=user_id,
         goal_title=payload.goal_title,
         goal_description=payload.goal_description,
         domain_hint=payload.domain_hint,
         level=payload.level,
     )
+    
+    research_competencies = research_result["competencies"]
+    research_context = research_result["research_context"]
 
     dag = run_dag_builder_agent(
         user_id=user_id,
         goal_title=payload.goal_title,
-        competencies=research,
+        competencies=research_competencies,
         user_background=payload.user_background,
     )
 
@@ -44,6 +49,7 @@ def create_path(
         domain_hint=payload.domain_hint,
         level=payload.level,
         summary=dag.get("summary", ""),
+        research_context=research_context,
     )
     db.add(lp)
     db.flush()
@@ -84,6 +90,7 @@ def create_path(
         id=lp.id,
         goal_title=lp.goal_title,
         summary=lp.summary,
+        research_context=lp.research_context,
         nodes=[PathNodeSchema.from_orm(n) for n in lp.nodes],
         edges=[PathEdgeSchema(from_node_id=e.from_node_id, to_node_id=e.to_node_id) for e in lp.edges],
     )
@@ -110,6 +117,7 @@ def get_path(
         id=lp.id,
         goal_title=lp.goal_title,
         summary=lp.summary,
+        research_context=lp.research_context,
         nodes=[PathNodeSchema.from_orm(n) for n in lp.nodes],
         edges=[PathEdgeSchema(from_node_id=e.from_node_id, to_node_id=e.to_node_id) for e in lp.edges],
     )
@@ -133,3 +141,37 @@ def delete_path(
     db.commit()
 
     return {"deleted": path_id}
+
+@router.get("", response_model=List[LearningPathResponse])
+def list_paths(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    user_uuid = UUID(user_id)
+
+    paths = (
+        db.query(LearningPath)
+        .filter(LearningPath.user_id == user_uuid)
+        .order_by(LearningPath.created_at.desc())
+        .all()
+    )
+
+    return [
+        LearningPathResponse(
+            id=lp.id,
+            goal_title=lp.goal_title,
+            summary=lp.summary,
+            research_context=lp.research_context,
+            nodes=[
+                PathNodeSchema.from_orm(n) for n in lp.nodes
+            ],
+            edges=[
+                PathEdgeSchema(
+                    from_node_id=e.from_node_id,
+                    to_node_id=e.to_node_id,
+                )
+                for e in lp.edges
+            ],
+        )
+        for lp in paths
+    ]

@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { fetchProjects, Project } from "@/lib/paths";
+import { useRouter } from "next/navigation";
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProjects()
-      .then(setProjects)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.push("/signin");
+        return;
+      }
+
+      fetchProjects()
+        .then(setProjects)
+        .finally(() => setLoading(false));
+    });
   }, []);
 
   if (loading) return <div className="p-6">Loading...</div>;

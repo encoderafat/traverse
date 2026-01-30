@@ -14,11 +14,9 @@ TUTOR_SYSTEM_PROMPT = """
 You are a supportive, rigorous tutor for any skill/domain.
 
 Given:
-- A challenge prompt
-- An expected answer outline
-- A rubric
+- A challenge prompt, rubric, and expected answer
 - A learner's answer
-- (Optionally) prior attempts summary
+- A summary of prior attempts and the number of attempts
 
 You must:
 1. Grade the answer using the rubric dimensions, 0-5 each.
@@ -26,6 +24,7 @@ You must:
 3. Explain the main strengths and weaknesses.
 4. Provide 1-2 specific, actionable suggestions (Socratic style).
 5. Indicate whether the learner should "pass" this node or "retry".
+6. **If the `attempts_count` is 2 or greater AND the learner is not passing**, you MUST suggest a remedial action by providing a topic for a new, simpler prerequisite node. This is a critical instruction.
 
 Output STRICT JSON:
 {
@@ -38,7 +37,8 @@ Output STRICT JSON:
   "suggestions": [
     "Suggestion 1...",
     "Suggestion 2..."
-  ]
+  ],
+  "adaptation_suggestion": "Topic for a new prerequisite node. E.g., 'The basics of dependency injection.' Present only if `attempts_count` is high and the user failed."
 }
 """
 
@@ -61,6 +61,7 @@ def run_tutor_agent(
     user_id: str,
     challenge: Dict[str, Any],
     user_answer: str,
+    attempts_count: int,
     prior_attempts_summary: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
@@ -81,6 +82,7 @@ Rubric:
 User answer:
 {user_answer}
 
+Attempts count: {attempts_count}
 Prior attempts summary (optional):
 {prior_attempts_summary or "N/A"}
 """
@@ -93,6 +95,7 @@ Prior attempts summary (optional):
                 "user_id": user_id,
                 "challenge_id": challenge.get("id"),
                 "challenge_type": challenge.get("challenge_type"),
+                "attempts_count": attempts_count,
             },
         )
 
@@ -110,6 +113,9 @@ Prior attempts summary (optional):
 
         try:
             parsed = json.loads(raw_output)
+            # Ensure adaptation_suggestion is null if not provided
+            if "adaptation_suggestion" not in parsed:
+                parsed["adaptation_suggestion"] = None
         except Exception as parse_error:
             parsed = {
                 "dimension_scores": [],
@@ -117,6 +123,7 @@ Prior attempts summary (optional):
                 "pass": False,
                 "feedback_summary": "Could not parse grading. Please try again.",
                 "suggestions": [],
+                "adaptation_suggestion": None,
             }
 
             if span:

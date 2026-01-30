@@ -29,6 +29,7 @@ class LearningPath(Base):
     domain_hint = Column(String, nullable=True)
     level = Column(String, nullable=True)
     summary = Column(Text, nullable=True)
+    research_context = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

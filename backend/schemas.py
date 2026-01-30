@@ -24,6 +24,7 @@ class LearningPathResponse(BaseModel):
     id: int
     goal_title: str
     summary: Optional[str]
+    research_context: Optional[list] = None
     nodes: List[PathNodeSchema]
     edges: List[PathEdgeSchema]
 

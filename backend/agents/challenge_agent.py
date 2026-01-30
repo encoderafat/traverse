@@ -11,14 +11,17 @@ from services.opik_client import create_opik_tracer
 # -----------------------------------------------------------------------------
 
 CHALLENGE_SYSTEM_PROMPT = """
-You are an expert instructional designer.
+You are an expert instructional designer who creates realistic, scenario-based challenges.
 
-Given a learning node (a competency) and context, create ONE realistic "proof of competency" challenge.
+Given a learning node (a competency) and, most importantly, external research content (articles, blog posts, etc.), create ONE "proof of competency" challenge.
 
-The challenge must:
+The challenge MUST:
+- Be directly inspired by or based on the provided research content.
 - Reflect a real-world task in this domain.
 - Be solvable via a text answer (explanation, plan, critique, or small design).
 - Include an expected answer outline and a rubric with generic dimensions.
+
+If no research content is provided, do your best to create a realistic challenge based on the node's description alone.
 
 Output STRICT JSON:
 {
@@ -60,6 +63,7 @@ def run_challenge_agent(
     path_id: int,
     node: Dict[str, Any],
     domain_hint: Optional[str],
+    research_context: Optional[list] = None,
 ) -> Dict[str, Any]:
     """
     Generates a single challenge for a learning node.
@@ -67,13 +71,28 @@ def run_challenge_agent(
     """
 
     user_msg = f"""
-    Domain hint: {domain_hint or "N/A"}
+Domain hint: {domain_hint or "N/A"}
 
-    Node:
-    {json.dumps(node, indent=2)}
+Node to build challenge for:
+{json.dumps(node, indent=2)}
 
-    Create ONE challenge as described.
-    """
+---
+Research Content to base the challenge on:
+"""
+    if research_context:
+        for item in research_context:
+            # Truncate content to avoid excessive prompt length.
+            # This is a simple strategy; more advanced would be summarization or embedding-based search.
+            content_preview = (item.get('content', '') or '')[:3000]
+            user_msg += f"\nURL: {item.get('url', 'N/A')}\nContent Preview:\n{content_preview}\n---"
+    else:
+        user_msg += "\nNo external research content provided."
+
+
+    user_msg += """
+---
+Create ONE challenge as described in the system prompt, based primarily on the provided research content.
+"""
 
     span = None
     if opik_tracer:
@@ -85,6 +104,7 @@ def run_challenge_agent(
                 "node_id": node.get("id"),
                 "node_title": node.get("title"),
                 "domain_hint": domain_hint,
+                "has_research_context": bool(research_context),
             },
         )
 

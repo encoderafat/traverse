@@ -149,3 +149,78 @@ def run_dag_builder_agent(
     finally:
         if span:
             span.end()
+
+
+# -----------------------------------------------------------------------------
+# Remedial Node Agent
+# -----------------------------------------------------------------------------
+
+REMEDIAL_NODE_SYSTEM_PROMPT = """
+You are an expert curriculum designer who specializes in adaptive learning.
+
+A user is struggling with a specific concept in their learning path. Your task is to create a SINGLE, small, remedial (prerequisite) learning node to help them understand the fundamentals.
+
+You will be given the user's goal, the node they are struggling with, and a suggestion for the remedial topic.
+
+Rules:
+- The node you create should be a small, foundational concept that can be learned quickly.
+- The title and description should be encouraging and clear.
+- Estimate a short learning time (e.g., 10-20 minutes).
+
+Output STRICT JSON with the new node's content:
+{
+  "title": "...",
+  "description": "...",
+  "node_type": "concept",
+  "estimated_minutes": 15,
+  "tags": ["remedial", "adaptive"]
+}
+"""
+
+def run_remedial_node_agent(
+    user_id: str,
+    goal_title: str,
+    struggling_node_title: str,
+    adaptation_suggestion: str,
+) -> Dict[str, Any]:
+    """
+    Generates a single remedial node to help a struggling user.
+    """
+    user_msg = f"""
+    User's Main Goal: {goal_title}
+    Node They Are Struggling With: "{struggling_node_title}"
+    Tutor's Suggestion for a Remedial Topic: "{adaptation_suggestion}"
+
+    Based on this, generate one small, prerequisite node as described in the system prompt.
+    """
+
+    span = None
+    if opik_tracer:
+        span = opik_tracer.start_span(
+            "generate_remedial_node",
+            metadata={
+                "user_id": user_id,
+                "goal_title": goal_title,
+                "struggling_node_title": struggling_node_title,
+                "adaptation_suggestion": adaptation_suggestion,
+            },
+        )
+    
+    try:
+        raw_output = call_gemini(
+            system_instruction=REMEDIAL_NODE_SYSTEM_PROMPT,
+            user_message=user_msg,
+        )
+        if span:
+            span.add_event("remedial_model_response", {"raw_output": raw_output})
+        
+        parsed = json.loads(raw_output)
+        return parsed
+
+    except Exception as exc:
+        if span:
+            span.add_event("remedial_agent_exception", {"error": str(exc)})
+        raise
+    finally:
+        if span:
+            span.end()

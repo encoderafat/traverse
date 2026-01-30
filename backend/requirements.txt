@@ -29,5 +29,6 @@ litellm==1.77.1
 # --- Faster JSON serialization (can be plugged into FastAPI) ---
 orjson>=3.10.0
 
-# --- PyJWT for token handling (if needed) ---
-PyJWT>=2.8.0
+# --- Authentication ---
+python-jose[cryptography]>=3.3.0
+requests>=2.31.0

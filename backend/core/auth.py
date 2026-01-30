@@ -1,16 +1,45 @@
+from functools import lru_cache
 import os
+import requests
 from typing import Optional
-
-import jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from uuid import UUID
 
-JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+from jose import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
 JWT_AUDIENCE = os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated")
-JWT_ALGORITHM = "HS256"
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+if not SUPABASE_URL:
+    raise RuntimeError("SUPABASE_URL not set")
+
+if not SUPABASE_ANON_KEY:
+    raise RuntimeError("SUPABASE_ANON_KEY not set")
+
+JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+
+
+@lru_cache
+def get_jwks():
+    try:
+        res = requests.get(
+            JWKS_URL,
+            headers={
+                "apikey": SUPABASE_ANON_KEY,
+            },
+            timeout=5,
+        )
+        res.raise_for_status()
+        return res.json()
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch JWKS: {e}")
+
 
 
 class AuthenticatedUser:
@@ -26,34 +55,46 @@ class AuthenticatedUser:
         self.role = role
         self.claims = claims or {}
 
+def get_public_key(token: str):
+    jwks = get_jwks()
+    headers = jwt.get_unverified_header(token)
+    kid = headers.get("kid")
+
+    if not kid:
+        raise HTTPException(status_code=401, detail="Missing kid in token")
+
+    for key in jwks["keys"]:
+        if key["kid"] == kid:
+            return key
+
+    raise HTTPException(status_code=401, detail="Public key not found")
+
 
 def verify_supabase_jwt(token: str) -> AuthenticatedUser:
-    if not JWT_SECRET:
-        raise RuntimeError("SUPABASE_JWT_SECRET not set")
-
     try:
+        public_key = get_public_key(token)
+        if "alg" not in public_key:
+            raise HTTPException(status_code=401, detail="Missing alg in public key")
+
         payload = jwt.decode(
             token,
-            JWT_SECRET,
-            algorithms=[JWT_ALGORITHM],
+            public_key,
+            algorithms=[public_key["alg"]],
             audience=JWT_AUDIENCE,
+            options={"verify_iss": False},  # Supabase does not require issuer
         )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
 
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Missing sub claim")
 
     email = payload.get("email")
-
-    # Supabase roles usually live here
-    role = (
-        payload.get("role")
-        or payload.get("app_metadata", {}).get("role")
-    )
+    role = payload.get("role") or payload.get("app_metadata", {}).get("role")
 
     return AuthenticatedUser(
         user_id=user_id,
