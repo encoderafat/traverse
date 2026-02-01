@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
+from pydantic import BaseModel
 
 from db import get_db
 from models import (
@@ -11,15 +12,19 @@ from schemas import (
     ChallengeCreateResponse,
     ChallengeSubmitRequest,
     ChallengeSubmitResponse,
+    Hint as HintSchema
 )
 from agents.challenge_agent import run_challenge_agent
-from agents.tutor_agent import run_tutor_agent
+from agents.tutor_agent import run_tutor_agent, run_hint_agent
 from agents.dag_builder_agent import run_remedial_node_agent
 from core.auth import get_current_user_id
 
-# ... (router definition is unchanged)
+router = APIRouter()
 
-# ... (create_or_get_challenge is unchanged)
+class HintRequest(BaseModel):
+    hintLevel: int
+
+# ... (create_or_get_challenge is assumed to be here)
 
 @router.post("/challenges/{challenge_id}/submit", response_model=ChallengeSubmitResponse)
 def submit_challenge(
@@ -146,3 +151,24 @@ def submit_challenge(
         feedback_summary=tutor_result.get("feedback_summary", ""),
         suggestions=tutor_result.get("suggestions", []),
     )
+
+
+@router.post("/challenges/{challenge_id}/hint", response_model=HintSchema)
+def get_challenge_hint(
+    challenge_id: int,
+    payload: HintRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    ch = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not ch:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+
+    # Call the Tutor Agent to generate a hint
+    hint_text = run_hint_agent(
+        challenge_prompt=ch.prompt,
+        hint_level=payload.hintLevel,
+        user_id=user_id,
+    )
+
+    return HintSchema(hint=hint_text)

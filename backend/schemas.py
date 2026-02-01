@@ -1,42 +1,85 @@
-from typing import List, Optional, Any
 from pydantic import BaseModel
 
-class CreatePathRequest(BaseModel):
-    goal_title: str
-    goal_description: Optional[str] = None
-    domain_hint: Optional[str] = None
-    level: Optional[str] = None
-    user_background: Optional[str] = None
 
-class PathNodeSchema(BaseModel):
+class UserBase(BaseModel):
+    email: str
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class User(UserBase):
     id: int
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
+
+class LearningPathBase(BaseModel):
+    goal_title: str
+    summary: str
+
+
+class LearningPathCreate(LearningPathBase):
+    pass
+
+
+class LearningPath(LearningPathBase):
+    id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class NodeBase(BaseModel):
     title: str
     description: str
     node_type: str
-    estimated_minutes: Optional[int] = None
-    metadata_json: Optional[dict] = None
+    estimated_minutes: int | None = None
+    metadata_json: dict | None = None
 
-class PathEdgeSchema(BaseModel):
+
+class NodeCreate(NodeBase):
+    pass
+
+
+class Node(NodeBase):
+    id: int
+    path_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class EdgeBase(BaseModel):
     from_node_id: int
     to_node_id: int
 
-class LearningPathResponse(BaseModel):
-    id: int
-    goal_title: str
-    summary: Optional[str]
-    research_context: Optional[list] = None
-    nodes: List[PathNodeSchema]
-    edges: List[PathEdgeSchema]
 
-class ChallengeCreateResponse(BaseModel):
-    challenge_id: int
+class EdgeCreate(EdgeBase):
+    pass
+
+
+class Edge(EdgeBase):
+    id: int
+    path_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class ChallengeBase(BaseModel):
     prompt: str
 
-class ChallengeSubmitRequest(BaseModel):
-    answer: str
 
-class ChallengeSubmitResponse(BaseModel):
-    score: float
-    pass_node: bool
-    feedback_summary: str
-    suggestions: List[str]
+class Challenge(ChallengeBase):
+    challenge_id: int
+
+    class Config:
+        orm_mode = True
+
+class Hint(BaseModel):
+    hint: str

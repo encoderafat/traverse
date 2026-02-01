@@ -42,6 +42,18 @@ Output STRICT JSON:
 }
 """
 
+HINT_SYSTEM_PROMPT = """
+You are a Socratic tutor. Your goal is to guide, not to give answers.
+
+Given a challenge prompt and a hint level (0, 1, 2, ...), provide a single, progressively more specific hint.
+- Level 0: Ask a high-level question to orient the learner.
+- Level 1: Point to a specific concept or part of the problem.
+- Level 2: Suggest a concrete action or check.
+- Level 3+: Give a more direct pointer, but still avoid the direct answer.
+
+Your response should be a single sentence. Do not add any preamble.
+"""
+
 # -----------------------------------------------------------------------------
 # Evaluation Prompt
 # -----------------------------------------------------------------------------
@@ -213,3 +225,25 @@ Prior attempts summary (optional):
     finally:
         if span:
             span.end()
+
+def run_hint_agent(
+    challenge_prompt: str,
+    hint_level: int,
+    user_id: str, # user_id could be used for tracing or personalization
+) -> str:
+    """
+    Generates a tiered, Socratic hint for a given challenge.
+    """
+    user_msg = f"""
+Challenge Prompt:
+{challenge_prompt}
+
+Hint Level: {hint_level}
+"""
+
+    hint_text = call_gemini(
+        system_instruction=HINT_SYSTEM_PROMPT,
+        user_message=user_msg,
+    )
+    return hint_text
+

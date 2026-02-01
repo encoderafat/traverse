@@ -5,6 +5,10 @@ export interface LearningPath {
   id: number;
   goal_title: string;
   summary: string;
+  goal_description?: string; // Added from original payload
+  domain_hint?: string;     // Added from original payload
+  level?: string;           // Added from original payload
+  user_background?: string; // Added from original payload
 }
 
 export async function fetchPaths(): Promise<LearningPath[]> {
@@ -17,37 +21,17 @@ export async function createPath(payload: {
   domain_hint?: string;
   level?: string;
   user_background?: string;
-}) {
-  return apiFetch("/api/paths", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export type Project = {
-  id: number;
-  goal_title: string;
-  summary: string;
-};
-
-export async function fetchProjects(): Promise<Project[]> {
-  return apiFetch<Project[]>("/api/paths");
-}
-
-export async function createProject(payload: {
-  goal_title: string;
-  goal_description?: string;
-  domain_hint?: string;
-  level?: string;
-  user_background?: string;
-}) {
-  return apiFetch<{ id: number }>("/api/paths", {
+}): Promise<LearningPath> { // Ensure it returns a LearningPath
+  return apiFetch<LearningPath>("/api/paths", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function fetchProject(projectId: string) {
+  // Renamed to fetchPath for consistency, but kept fetchProject for now
+  // to avoid breaking other parts of the app if they use it.
+  // Ideally, this should also return LearningPath
   return apiFetch<{
     id: number;
     goal_title: string;
