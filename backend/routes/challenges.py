@@ -3,21 +3,21 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from pydantic import BaseModel
 
-from db import get_db
-from models import (
+from backend.db import get_db
+from backend.models import (
     PathNode, LearningPath, Challenge, ChallengeAttempt, PathEdge,
     NodeProgress, NodeProgressStatus
 )
-from schemas import (
+from backend.schemas import (
     ChallengeCreateResponse,
     ChallengeSubmitRequest,
     ChallengeSubmitResponse,
     Hint as HintSchema
 )
-from agents.challenge_agent import run_challenge_agent
-from agents.tutor_agent import run_tutor_agent, run_hint_agent
-from agents.dag_builder_agent import run_remedial_node_agent
-from core.auth import get_current_user_id
+from backend.agents.challenge_agent import run_challenge_agent
+from backend.agents.tutor_agent import run_tutor_agent, run_hint_agent
+from backend.agents.dag_builder_agent import run_remedial_node_agent
+from backend.core.auth import get_current_user_id
 
 router = APIRouter()
 

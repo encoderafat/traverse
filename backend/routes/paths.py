@@ -4,14 +4,14 @@ from uuid import UUID
 from typing import List
 
 
-from models import LearningPath, PathNode, PathEdge, NodeProgress, NodeProgressStatus
-from schemas import (
+from backend.models import LearningPath, PathNode, PathEdge, NodeProgress, NodeProgressStatus
+from backend.schemas import (
     CreatePathRequest, LearningPathResponse, PathNodeSchema, PathEdgeSchema
 )
-from db import get_db
-from agents.research_agent import run_research_agent
-from agents.dag_builder_agent import run_dag_builder_agent
-from core.auth import get_current_user_id, get_optional_user, require_role, enforce_ownership, get_current_user
+from backend.db import get_db
+from backend.agents.research_agent import run_research_agent
+from backend.agents.dag_builder_agent import run_dag_builder_agent
+from backend.core.auth import get_current_user_id, get_optional_user, require_role, enforce_ownership, get_current_user
 
 router = APIRouter(prefix="/api/paths", tags=["paths"])
 

@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
 
-from db import get_db
-from models import LearningPath, NodeProgress, NodeProgressStatus
+from backend.db import get_db
+from backend.models import LearningPath, NodeProgress, NodeProgressStatus
 from pydantic import BaseModel
-from core.auth import get_current_user_id
+from backend.core.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/paths", tags=["progress"])
 

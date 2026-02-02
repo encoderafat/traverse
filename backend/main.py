@@ -1,9 +1,9 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import paths, challenges, progress
-from models import Base
-from db import engine
+from backend.routes import paths, challenges, progress
+from backend.models import Base
+from backend.db import engine
 
 
 app = FastAPI(title="Traverse API")

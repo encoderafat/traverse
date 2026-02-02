@@ -3,8 +3,8 @@
 from typing import Dict, Any, Optional
 import json
 
-from services.llm_client import call_gemini
-from services.opik_client import create_opik_tracer
+from backend.services.llm_client import call_gemini
+from backend.services.opik_client import create_opik_tracer
 
 # -----------------------------------------------------------------------------
 # System Prompt
