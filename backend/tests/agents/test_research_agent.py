@@ -1,15 +1,15 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from backend.agents.research_agent import run_research_agent, eval_research_quality
+from agents.research_agent import run_research_agent, eval_research_quality
 
 
 class TestResearchAgent:
     """Unit tests for the research agent."""
 
-    @patch('backend.agents.research_agent.opik_tracer')
-    @patch('backend.agents.research_agent.call_gemini')
-    @patch('backend.agents.research_agent.google_web_search')
-    @patch('backend.agents.research_agent.web_fetch')
+    @patch('agents.research_agent.opik_tracer')
+    @patch('agents.research_agent.call_gemini')
+    @patch('agents.research_agent.google_web_search')
+    @patch('agents.research_agent.web_fetch')
     def test_run_research_agent_success(self, mock_web_fetch, mock_google_web_search, mock_call_gemini, mock_opik_tracer):
         """Test successful execution of the research agent."""
         # Mock the web search results
@@ -58,9 +58,9 @@ class TestResearchAgent:
         mock_web_fetch.assert_called()
         mock_call_gemini.assert_called()
 
-    @patch('backend.agents.research_agent.opik_tracer')
-    @patch('backend.agents.research_agent.call_gemini')
-    @patch('backend.agents.research_agent.google_web_search')
+    @patch('agents.research_agent.opik_tracer')
+    @patch('agents.research_agent.call_gemini')
+    @patch('agents.research_agent.google_web_search')
     def test_run_research_agent_no_content_found(self, mock_google_web_search, mock_call_gemini, mock_opik_tracer):
         """Test research agent when no content is found."""
         # Mock empty search results
@@ -94,8 +94,8 @@ class TestResearchAgent:
         assert "competencies" in result
         assert "research_context" in result
 
-    @patch('backend.agents.research_agent.opik_tracer')
-    @patch('backend.agents.research_agent.call_gemini')
+    @patch('agents.research_agent.opik_tracer')
+    @patch('agents.research_agent.call_gemini')
     def test_run_research_agent_json_parsing_error(self, mock_call_gemini, mock_opik_tracer):
         """Test research agent when LLM returns invalid JSON."""
         # Mock invalid JSON response

@@ -157,3 +157,23 @@ def enforce_ownership(
             status_code=403,
             detail="You do not own this resource",
         )
+
+from sqlalchemy.orm import Session
+from models import User
+from db import get_db
+
+def get_or_create_user_from_token(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> User:
+    user_id = UUID(current_user.id)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        user = User(
+            id=user_id,
+            email=current_user.email,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user

@@ -3,8 +3,8 @@
 from typing import Dict, Any, Optional
 import json
 
-from backend.services.llm_client import call_gemini
-from backend.services.opik_client import create_opik_tracer
+from services.llm_client import call_gemini
+from services.opik_client import create_opik_tracer
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -117,8 +117,22 @@ def run_challenge_agent(
     Generates a single challenge for a learning node.
     Fully instrumented with core Opik tracing.
     """
+    from opik import start_as_current_trace, start_as_current_span
 
-    user_msg = f"""
+    with start_as_current_trace(
+        name="generate_challenge",
+        tags=["challenge", "assessment"],
+        metadata={
+            "user_id": user_id,
+            "path_id": path_id,
+            "node_id": node.get("id"),
+            "node_title": node.get("title"),
+            "domain_hint": domain_hint,
+            "has_research_context": bool(research_context),
+        },
+        project_name="learning-paths"
+    ) as trace:
+        user_msg = f"""
 Domain hint: {domain_hint or "N/A"}
 
 Node to build challenge for:
@@ -127,46 +141,32 @@ Node to build challenge for:
 ---
 Research Content to base the challenge on:
 """
-    if research_context:
-        for item in research_context:
-            # Truncate content to avoid excessive prompt length.
-            # This is a simple strategy; more advanced would be summarization or embedding-based search.
-            content_preview = (item.get('content', '') or '')[:3000]
-            user_msg += f"\nURL: {item.get('url', 'N/A')}\nContent Preview:\n{content_preview}\n---"
-    else:
-        user_msg += "\nNo external research content provided."
+        if research_context:
+            for item in research_context:
+                # Truncate content to avoid excessive prompt length.
+                # This is a simple strategy; more advanced would be summarization or embedding-based search.
+                content_preview = (item.get('content', '') or '')[:3000]
+                user_msg += f"\nURL: {item.get('url', 'N/A')}\nContent Preview:\n{content_preview}\n---"
+        else:
+            user_msg += "\nNo external research content found."
 
 
-    user_msg += """
+        user_msg += """
 ---
-Create ONE challenge as described in the system prompt, based primarily on the provided research content.
+Create ONE challenge as described in the system prompt, based on the provided research content.
 """
 
-    span = None
-    if opik_tracer:
-        span = opik_tracer.start_span(
-            name="generate_challenge",
-            metadata={
-                "user_id": user_id,
-                "path_id": path_id,
-                "node_id": node.get("id"),
-                "node_title": node.get("title"),
-                "domain_hint": domain_hint,
-                "has_research_context": bool(research_context),
-            },
-        )
-
-    try:
-        raw_output = call_gemini(
-            system_instruction=CHALLENGE_SYSTEM_PROMPT,
-            user_message=user_msg,
-        )
-
-        if span:
-            span.add_event(
-                name="model_response_received",
-                metadata={"raw_output_preview": raw_output[:500]},
+        with start_as_current_span(
+            name="call_gemini",
+            type="llm",
+            metadata={"model": "gemini"}
+        ) as span:
+            raw_output = call_gemini(
+                system_instruction=CHALLENGE_SYSTEM_PROMPT,
+                user_message=user_msg,
             )
+            span.input = {"user_msg": user_msg[:500]}  # Limit input size
+            span.output = {"raw_output": raw_output[:500]}  # Limit output size
 
         try:
             parsed = json.loads(raw_output)
@@ -180,35 +180,11 @@ Create ONE challenge as described in the system prompt, based primarily on the p
                 "difficulty": None,
             }
 
-            if span:
-                span.add_event(
-                    name="json_parse_failure",
-                    metadata={
-                        "error": str(parse_error),
-                        "raw_output_preview": raw_output[:500],
-                    },
-                )
-
         # ---- Evaluation hook ---------------------------------------
         score, details = eval_challenge_quality(node, parsed)
-        if span:
-            span.add_evaluation(
-                name="challenge_quality",
-                score=score,
-                details=details,
-            )
+
+        trace.input = {"node_title": node.get("title"), "domain_hint": domain_hint}
+        trace.output = {"challenge_type": parsed.get("challenge_type"), "prompt_length": len(parsed.get("prompt", ""))}
 
 
         return parsed
-
-    except Exception as exc:
-        if span:
-            span.add_event(
-                name="challenge_agent_exception",
-                metadata={"error": str(exc)},
-            )
-        raise
-
-    finally:
-        if span:
-            span.end()

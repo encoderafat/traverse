@@ -3,8 +3,8 @@
 from typing import Dict, Any, Optional
 import json
 
-from backend.services.llm_client import call_gemini
-from backend.services.opik_client import create_opik_tracer
+from services.llm_client import call_gemini
+from services.opik_client import create_opik_tracer
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -122,38 +122,37 @@ def run_dag_builder_agent(
     Builds a learning DAG from extracted competencies.
     Fully instrumented with core Opik tracing.
     """
+    from opik import start_as_current_trace, start_as_current_span
 
-    user_msg = f"""
-    User goal: {goal_title}
-    User background (free text): {user_background or "N/A"}
+    with start_as_current_trace(
+        name="build_learning_dag",
+        tags=["dag", "curriculum-structuring"],
+        metadata={
+            "user_id": user_id,
+            "goal_title": goal_title,
+            "competencies_count": len(competencies.get("competencies", [])),
+        },
+        project_name="learning-paths"
+    ) as trace:
+        user_msg = f"""
+        User goal: {goal_title}
+        User background (free text): {user_background or "N/A"}
 
-    Competencies JSON:
-    {json.dumps(competencies, indent=2)}
-    """
+        Competencies JSON:
+        {json.dumps(competencies, indent=2)}
+        """
 
-    # ---- Start Opik span -----------------------------------------------------
-    span = None
-    if opik_tracer:
-        span = opik_tracer.start_span(
-            name="build_learning_dag",
-            metadata={
-                "user_id": user_id,
-                "goal_title": goal_title,
-                "competencies_count": len(competencies.get("competencies", [])),
-            },
-        )
-
-    try:
-        raw_output = call_gemini(
-            system_instruction=DAG_BUILDER_SYSTEM_PROMPT,
-            user_message=user_msg,
-        )
-
-        if span:
-            span.add_event(
-                name="model_response_received",
-                metadata={"raw_output_preview": raw_output[:500]},
+        with start_as_current_span(
+            name="call_gemini",
+            type="llm",
+            metadata={"model": "gemini"}
+        ) as span:
+            raw_output = call_gemini(
+                system_instruction=DAG_BUILDER_SYSTEM_PROMPT,
+                user_message=user_msg,
             )
+            span.input = {"user_msg": user_msg[:500]}  # Limit input size
+            span.output = {"raw_output": raw_output[:500]}  # Limit output size
 
         try:
             parsed = json.loads(raw_output)
@@ -165,37 +164,14 @@ def run_dag_builder_agent(
                 "error": "invalid_json_from_model",
             }
 
-            if span:
-                span.add_event(
-                    name="json_parse_failure",
-                    metadata={
-                        "error": str(parse_error),
-                        "raw_output_preview": raw_output[:500],
-                    },
-                )
 
         score, details = eval_dag_quality(goal_title, parsed)
-        if span:
-            span.add_evaluation(
-                name="dag_quality",
-                score=score,
-                details=details,
-            )
+
+        trace.input = {"goal_title": goal_title, "competencies_count": len(competencies.get("competencies", []))}
+        trace.output = {"nodes_count": len(parsed.get("nodes", [])), "edges_count": len(parsed.get("edges", []))}
 
 
         return parsed
-
-    except Exception as exc:
-        if span:
-            span.add_event(
-                name="dag_builder_exception",
-                metadata={"error": str(exc)},
-            )
-        raise
-
-    finally:
-        if span:
-            span.end()
 
 
 # -----------------------------------------------------------------------------
@@ -233,41 +209,42 @@ def run_remedial_node_agent(
     """
     Generates a single remedial node to help a struggling user.
     """
-    user_msg = f"""
-    User's Main Goal: {goal_title}
-    Node They Are Struggling With: "{struggling_node_title}"
-    Tutor's Suggestion for a Remedial Topic: "{adaptation_suggestion}"
+    from opik import start_as_current_trace, start_as_current_span
 
-    Based on this, generate one small, prerequisite node as described in the system prompt.
-    """
+    with start_as_current_trace(
+        name="generate_remedial_node",
+        tags=["remedial", "adaptive-learning"],
+        metadata={
+            "user_id": user_id,
+            "goal_title": goal_title,
+            "struggling_node_title": struggling_node_title,
+            "adaptation_suggestion": adaptation_suggestion,
+        },
+        project_name="learning-paths"
+    ) as trace:
+        user_msg = f"""
+        User's Main Goal: {goal_title}
+        Node They Are Struggling With: "{struggling_node_title}"
+        Tutor's Suggestion for a Remedial Topic: "{adaptation_suggestion}"
 
-    span = None
-    if opik_tracer:
-        span = opik_tracer.start_span(
-            "generate_remedial_node",
-            metadata={
-                "user_id": user_id,
-                "goal_title": goal_title,
-                "struggling_node_title": struggling_node_title,
-                "adaptation_suggestion": adaptation_suggestion,
-            },
-        )
-    
-    try:
-        raw_output = call_gemini(
-            system_instruction=REMEDIAL_NODE_SYSTEM_PROMPT,
-            user_message=user_msg,
-        )
-        if span:
-            span.add_event("remedial_model_response", {"raw_output": raw_output})
-        
+        Based on this, generate one small, prerequisite node as described in the system prompt.
+        """
+
+        with start_as_current_span(
+            name="call_gemini",
+            type="llm",
+            metadata={"model": "gemini"}
+        ) as span:
+            raw_output = call_gemini(
+                system_instruction=REMEDIAL_NODE_SYSTEM_PROMPT,
+                user_message=user_msg,
+            )
+            span.input = {"user_msg": user_msg[:500]}  # Limit input size
+            span.output = {"raw_output": raw_output[:500]}  # Limit output size
+
         parsed = json.loads(raw_output)
-        return parsed
 
-    except Exception as exc:
-        if span:
-            span.add_event("remedial_agent_exception", {"error": str(exc)})
-        raise
-    finally:
-        if span:
-            span.end()
+        trace.input = {"goal_title": goal_title, "struggling_node_title": struggling_node_title}
+        trace.output = {"generated_node_title": parsed.get("title")}
+
+        return parsed

@@ -20,3 +20,15 @@ a {
   --border: #E5E7EB;
   --muted: #6B7280;
 }
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.border-border {
+  border-color: var(--border);
+}

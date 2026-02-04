@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from backend.agents.dag_builder_agent import run_dag_builder_agent, eval_dag_quality
+from agents.dag_builder_agent import run_dag_builder_agent, eval_dag_quality
 
 
 class TestDagBuilderAgent:
     """Unit tests for the DAG builder agent."""
 
-    @patch('backend.agents.dag_builder_agent.opik_tracer')
-    @patch('backend.agents.dag_builder_agent.call_gemini')
+    @patch('agents.dag_builder_agent.opik_tracer')
+    @patch('agents.dag_builder_agent.call_gemini')
     def test_run_dag_builder_agent_success(self, mock_call_gemini, mock_opik_tracer):
         """Test successful execution of the DAG builder agent."""
         # Mock the LLM response with valid JSON
@@ -60,8 +60,8 @@ class TestDagBuilderAgent:
         # Verify that the mock was called
         mock_call_gemini.assert_called()
 
-    @patch('backend.agents.dag_builder_agent.opik_tracer')
-    @patch('backend.agents.dag_builder_agent.call_gemini')
+    @patch('agents.dag_builder_agent.opik_tracer')
+    @patch('agents.dag_builder_agent.call_gemini')
     def test_run_dag_builder_agent_json_parsing_error(self, mock_call_gemini, mock_opik_tracer):
         """Test DAG builder agent when LLM returns invalid JSON."""
         # Mock invalid JSON response
@@ -121,8 +121,8 @@ class TestDagBuilderAgent:
         assert isinstance(details, dict)
         assert 0.0 <= score <= 1.0
 
-    @patch('backend.agents.dag_builder_agent.opik_tracer')
-    @patch('backend.agents.dag_builder_agent.call_gemini')
+    @patch('agents.dag_builder_agent.opik_tracer')
+    @patch('agents.dag_builder_agent.call_gemini')
     def test_run_dag_builder_agent_with_empty_competencies(self, mock_call_gemini, mock_opik_tracer):
         """Test DAG builder agent with empty competencies."""
         # Mock the LLM response

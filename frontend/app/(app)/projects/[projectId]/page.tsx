@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from 'next/navigation';
-import { fetchProject, fetchPathProgress, PathProgress } from "@/lib/paths";
+import { useSearchParams, useParams, useRouter } from 'next/navigation';
+import { fetchProject, fetchPathProgress, PathProgress, updateNodeStatus } from "@/lib/paths";
 import DagView from "@/components/dag/DagView";
 import NodeDetailsPanel from "@/components/dag/NodeDetailsPanel";
 import Notification from "@/components/ui/Notification";
@@ -27,14 +27,14 @@ const getLayoutedElements = (nodes: any[], edges: any[], progress: PathProgress 
     const nodeProgress = progressMap[node.id];
     const locked = isNodeLocked(node.id, progressMap, edges);
     const status = locked ? 'blocked' : (nodeProgress?.status || 'not_started');
-    
+
     let backgroundColor = '#A0AEC0'; // gray-500 for blocked/not_started
     if (status === 'completed') backgroundColor = '#48BB78'; // green-500
     if (status === 'in_progress') backgroundColor = '#4299E1'; // blue-500
-    
+
     return {
       id: node.id.toString(),
-      data: { 
+      data: {
         label: node.title,
         description: node.description,
         estimated_minutes: node.estimated_minutes,
@@ -65,26 +65,30 @@ const getLayoutedElements = (nodes: any[], edges: any[], progress: PathProgress 
 };
 
 
-export default function ProjectDetailPage({
-  params,
-}: {
-  params: { projectId:string };
-}) {
+export default function ProjectDetailPage() {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<PathProgress | null>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  
+
   // Notification State
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  
+
   const searchParams = useSearchParams();
+  const params = useParams();
+  const router = useRouter();
+  const { projectId } = params;
 
   useEffect(() => {
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+
     Promise.all([
-      fetchProject(params.projectId),
-      fetchPathProgress(params.projectId),
+      fetchProject(projectId as string),
+      fetchPathProgress(projectId as string),
     ])
       .then(([proj, prog]) => {
         setProject(proj);
@@ -93,24 +97,57 @@ export default function ProjectDetailPage({
         // Check for adaptation after data is fetched
         const refreshed = searchParams.get('refreshed');
         if (refreshed === 'true') {
-          const oldNodeCount = parseInt(sessionStorage.getItem(`nodeCount_${params.projectId}`) || '0', 10);
-          const newNodeCount = proj.nodes.length;
-          if (newNodeCount > oldNodeCount) {
-            setNotificationMessage("Your path was updated! We added a new prerequisite node to help you master this topic.");
-            setShowNotification(true);
+          const storageKey = `nodeCount_${projectId}`;
+          const storedValue = sessionStorage.getItem(storageKey);
+          if (storedValue !== null) {
+            const oldNodeCount = parseInt(storedValue, 10);
+            const newNodeCount = proj.nodes.length;
+            if (Number.isFinite(oldNodeCount) && newNodeCount > oldNodeCount) {
+              setNotificationMessage("Your path was updated! We added a new prerequisite node to help you master this topic.");
+              setShowNotification(true);
+            }
+            // Clean up sessionStorage only when we had a stored value
+            sessionStorage.removeItem(storageKey);
           }
-          // Clean up sessionStorage
-          sessionStorage.removeItem(`nodeCount_${params.projectId}`);
+          // Remove the query param to avoid repeated notifications on refresh
+          router.replace(`/projects/${projectId}`);
         }
       })
       .finally(() => setLoading(false));
-  }, [params.projectId, searchParams]);
+  }, [projectId, searchParams]);
 
   const { layoutedNodes, layoutedEdges } = useMemo(() => {
     if (!project) return { layoutedNodes: [], layoutedEdges: [] };
     return getLayoutedElements(project.nodes, project.edges, progress);
   }, [project, progress]);
 
+
+  const handleUpdateNodeStatus = async (nodeId: string, status: 'completed') => {
+    if (!projectId) return;
+
+    // Optimistic UI update
+    const numericNodeId = parseInt(nodeId, 10);
+    if (progress) {
+      const newNodes = progress.nodes.map(n => 
+        n.node_id === numericNodeId ? { ...n, status } : n
+      );
+      setProgress({ ...progress, nodes: newNodes });
+    }
+    if (selectedNode) {
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, status }});
+    }
+
+    try {
+      await updateNodeStatus(projectId as string, nodeId, status);
+      // Refetch the progress to ensure data consistency
+      const updatedProgress = await fetchPathProgress(projectId as string);
+      setProgress(updatedProgress);
+    } catch (error) {
+      console.error("Failed to update node status:", error);
+      // Optionally, revert the optimistic update here
+      // For now, we just log the error
+    }
+  };
 
   const handleNodeClick = (_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -122,7 +159,7 @@ export default function ProjectDetailPage({
   return (
     <div className="max-w-7xl mx-auto p-6">
       {showNotification && (
-        <Notification 
+        <Notification
           message={notificationMessage}
           type="info"
           onClose={() => setShowNotification(false)}
@@ -130,7 +167,7 @@ export default function ProjectDetailPage({
       )}
       <h1 className="text-3xl font-bold">{project.goal_title}</h1>
       <p className="text-muted mt-2 mb-6">{project.summary}</p>
-      
+
       {progress && (
         <div className="mb-6">
           <div className="flex justify-between text-sm mb-1">
@@ -150,9 +187,9 @@ export default function ProjectDetailPage({
       )}
 
       <DagView initialNodes={layoutedNodes} initialEdges={layoutedEdges} onNodeClick={handleNodeClick} />
-      
+
       <div className="mt-8">
-        <NodeDetailsPanel node={selectedNode} projectId={params.projectId} currentNodeCount={project.nodes.length} />
+        <NodeDetailsPanel node={selectedNode} projectId={projectId as string} currentNodeCount={project.nodes.length} onUpdateNodeStatus={handleUpdateNodeStatus} />
       </div>
     </div>
   );

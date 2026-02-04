@@ -6,7 +6,7 @@ These tests should only be run manually with real API credentials.
 import pytest
 import os
 from fastapi.testclient import TestClient
-from backend.main import app
+from main import app
 
 
 # Skip these tests unless explicitly enabled

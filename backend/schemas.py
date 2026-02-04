@@ -127,3 +127,4 @@ class ChallengeSubmitResponse(BaseModel):
     pass_node: bool
     feedback_summary: str
     suggestions: List[str]
+    remedial_added: bool = False

@@ -3,8 +3,8 @@
 from typing import Dict, Any, Optional
 import json
 
-from backend.services.llm_client import call_gemini, google_web_search, web_fetch
-from backend.services.opik_client import create_opik_tracer
+from services.llm_client import call_gemini, google_web_search, web_fetch
+from services.opik_client import create_opik_tracer
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -116,21 +116,19 @@ def run_research_agent(
     Derives competencies for a user goal using web research.
     Fully instrumented with Opik.
     """
+    from opik import start_as_current_trace, start_as_current_span
 
-    # ---- Start Opik span -----------------------------------------------------
-    span = None
-    if opik_tracer:
-        span = opik_tracer.start_span(
-            name="derive_competencies",
-            metadata={
-                "user_id": user_id,
-                "goal_title": goal_title,
-                "domain_hint": domain_hint,
-                "level": level,
-            },
-        )
-
-    try:
+    with start_as_current_trace(
+        name="derive_competencies",
+        tags=["research", "competency-extraction"],
+        metadata={
+            "user_id": user_id,
+            "goal_title": goal_title,
+            "domain_hint": domain_hint,
+            "level": level,
+        },
+        project_name="learning-paths"
+    ) as trace:
         search_queries = [
             f"{goal_title} job description requirements",
             f"{goal_title} expert blogs best practices",
@@ -142,11 +140,6 @@ def run_research_agent(
         for query in search_queries:
             results = google_web_search(query)
             search_results.extend(results.get("results", []))
-            if span:
-                span.add_event(
-                    name="web_search_performed",
-                    metadata={"query": query, "num_results": len(results.get("results", []))},
-                )
 
         # Filter and get top URLs
         urls_to_fetch = []
@@ -155,25 +148,15 @@ def run_research_agent(
                 urls_to_fetch.append(res["link"])
             if len(urls_to_fetch) >= 5:  # Limit to top 5 URLs for content fetching
                 break
-        
+
         # Fetch content from URLs
         fetched_content = []
         if urls_to_fetch:
             for url in urls_to_fetch:
                 try:
-                    content = web_fetch(prompt=f"Get content from {url}")
+                    content = web_fetch(url)
                     fetched_content.append({"url": url, "content": content})
-                    if span:
-                        span.add_event(
-                            name="content_fetched",
-                            metadata={"url": url, "content_length": len(content)},
-                        )
                 except Exception as fetch_exc:
-                    if span:
-                        span.add_event(
-                            name="content_fetch_failed",
-                            metadata={"url": url, "error": str(fetch_exc)},
-                        )
                     continue
 
         user_msg = f"""
@@ -196,16 +179,18 @@ Research Content:
 
 Derive competencies as described, primarily using the provided Research Content.
 """
-        raw_output = call_gemini(
-            system_instruction=RESEARCH_SYSTEM_PROMPT,
-            user_message=user_msg,
-        )
 
-        if span:
-            span.add_event(
-                name="model_response_received",
-                metadata={"raw_output_preview": raw_output[:500]},
+        with start_as_current_span(
+            name="call_gemini",
+            type="llm",
+            metadata={"model": "gemini"}
+        ) as span:
+            raw_output = call_gemini(
+                system_instruction=RESEARCH_SYSTEM_PROMPT,
+                user_message=user_msg,
             )
+            span.input = {"user_msg": user_msg[:500]}  # Limit input size
+            span.output = {"raw_output": raw_output[:500]}  # Limit output size
 
         try:
             parsed = json.loads(raw_output)
@@ -216,34 +201,10 @@ Derive competencies as described, primarily using the provided Research Content.
                 "error": "invalid_json_from_model",
             }
 
-            if span:
-                span.add_event(
-                    name="json_parse_failure",
-                    metadata={
-                        "error": str(parse_error),
-                        "raw_output_preview": raw_output[:500],
-                    },
-                )
-
         # ---- Evaluation hook --------------------------------------------------
         score, details = eval_research_quality(goal_title, parsed)
-        if span:
-            span.add_evaluation(
-                name="research_quality",
-                score=score,
-                details=details,
-            )
+
+        trace.input = {"goal_title": goal_title, "goal_description": goal_description}
+        trace.output = {"competencies_count": len(parsed.get("competencies", []))}
 
         return {"competencies": parsed, "research_context": fetched_content}
-
-    except Exception as exc:
-        if span:
-            span.add_event(
-                name="research_agent_exception",
-                metadata={"error": str(exc)},
-            )
-        raise
-
-    finally:
-        if span:
-            span.end()

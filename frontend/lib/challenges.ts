@@ -10,6 +10,7 @@ export type TutorResult = {
   pass_node: boolean;
   feedback_summary: string;
   suggestions: string[];
+  remedial_added?: boolean;
 };
 
 export type Hint = {

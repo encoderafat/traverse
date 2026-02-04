@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from backend.agents.challenge_agent import run_challenge_agent, eval_challenge_quality
+from agents.challenge_agent import run_challenge_agent, eval_challenge_quality
 
 
 class TestChallengeAgent:
     """Unit tests for the challenge agent."""
 
-    @patch('backend.agents.challenge_agent.opik_tracer')
-    @patch('backend.agents.challenge_agent.call_gemini')
+    @patch('agents.challenge_agent.opik_tracer')
+    @patch('agents.challenge_agent.call_gemini')
     def test_run_challenge_agent_success(self, mock_call_gemini, mock_opik_tracer):
         """Test successful execution of the challenge agent."""
         # Mock the LLM response with valid JSON
@@ -64,8 +64,8 @@ class TestChallengeAgent:
         # Verify that the mock was called
         mock_call_gemini.assert_called()
 
-    @patch('backend.agents.challenge_agent.opik_tracer')
-    @patch('backend.agents.challenge_agent.call_gemini')
+    @patch('agents.challenge_agent.opik_tracer')
+    @patch('agents.challenge_agent.call_gemini')
     def test_run_challenge_agent_without_research_context(self, mock_call_gemini, mock_opik_tracer):
         """Test challenge agent without research context."""
         # Mock the LLM response
@@ -106,8 +106,8 @@ class TestChallengeAgent:
         assert "challenge_type" in result
         assert "prompt" in result
 
-    @patch('backend.agents.challenge_agent.opik_tracer')
-    @patch('backend.agents.challenge_agent.call_gemini')
+    @patch('agents.challenge_agent.opik_tracer')
+    @patch('agents.challenge_agent.call_gemini')
     def test_run_challenge_agent_json_parsing_error(self, mock_call_gemini, mock_opik_tracer):
         """Test challenge agent when LLM returns invalid JSON."""
         # Mock invalid JSON response
@@ -164,8 +164,8 @@ class TestChallengeAgent:
         assert isinstance(details, dict)
         assert 0.0 <= score <= 1.0
 
-    @patch('backend.agents.challenge_agent.opik_tracer')
-    @patch('backend.agents.challenge_agent.call_gemini')
+    @patch('agents.challenge_agent.opik_tracer')
+    @patch('agents.challenge_agent.call_gemini')
     def test_run_challenge_agent_with_minimal_node_info(self, mock_call_gemini, mock_opik_tracer):
         """Test challenge agent with minimal node information."""
         # Mock the LLM response

@@ -24,7 +24,7 @@ Before running these tests, you need:
 ```bash
 # Set your real API keys
 export GOOGLE_API_KEY=your_actual_google_api_key
-export GEMINI_MODEL=gemini-1.5-pro-latest  # or whatever model you prefer
+export GEMINI_MODEL=gemini-3-flash-preview  # or whatever model you prefer
 export DATABASE_URL=postgresql://user:password@host:port/database_name
 export SUPABASE_URL=your_supabase_url
 export SUPABASE_JWT_SECRET=your_supabase_secret

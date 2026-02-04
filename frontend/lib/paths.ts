@@ -71,3 +71,13 @@ export async function fetchPathProgress(
   return apiFetch(`/api/paths/${projectId}/progress`);
 }
 
+export async function updateNodeStatus(
+  projectId: string,
+  nodeId: string,
+  status: 'completed'
+): Promise<NodeProgress> {
+  return apiFetch(`/api/paths/${projectId}/progress/nodes/${nodeId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+}

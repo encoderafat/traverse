@@ -1,8 +1,19 @@
 .
 ├── backend
+│   ├── __init__.py
 │   ├── __pycache__
-│   │   └── models.cpython-312.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── db.cpython-312.pyc
+│   │   ├── main.cpython-312.pyc
+│   │   ├── models.cpython-312.pyc
+│   │   └── schemas.cpython-312.pyc
 │   ├── agents
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── challenge_agent.cpython-312.pyc
+│   │   │   ├── dag_builder_agent.cpython-312.pyc
+│   │   │   ├── research_agent.cpython-312.pyc
+│   │   │   └── tutor_agent.cpython-312.pyc
 │   │   ├── challenge_agent.py
 │   │   ├── dag_builder_agent.py
 │   │   ├── research_agent.py
@@ -16,12 +27,18 @@
 │   │   └── versions
 │   │       ├── __pycache__
 │   │       │   ├── 696eee02c3dd_switch_user_id_to_uuid.cpython-312.pyc
-│   │       │   └── 7a5eb326d9ee_init_db.cpython-312.pyc
+│   │       │   ├── 7a5eb326d9ee_init_db.cpython-312.pyc
+│   │       │   └── bd8e7738cbe4_add_research_context_to_learning_paths.cpython-312.pyc
 │   │       ├── 696eee02c3dd_switch_user_id_to_uuid.py
-│   │       └── 7a5eb326d9ee_init_db.py
+│   │       ├── 7a5eb326d9ee_init_db.py
+│   │       └── bd8e7738cbe4_add_research_context_to_learning_paths.py
 │   ├── alembic.ini
 │   ├── core
 │   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── auth.cpython-312.pyc
+│   │   │   └── config.cpython-312.pyc
 │   │   ├── auth.py
 │   │   └── config.py
 │   ├── db.py
@@ -30,19 +47,61 @@
 │   ├── project-structure.txt
 │   ├── requirements.txt
 │   ├── routes
+│   │   ├── __pycache__
+│   │   │   ├── challenges.cpython-312.pyc
+│   │   │   ├── paths.cpython-312.pyc
+│   │   │   └── progress.cpython-312.pyc
 │   │   ├── challenges.py
 │   │   ├── paths.py
 │   │   └── progress.py
 │   ├── schemas.py
-│   └── services
-│       ├── llm_client.py
-│       └── opik_client.py
+│   ├── services
+│   │   ├── __pycache__
+│   │   │   ├── llm_client.cpython-312.pyc
+│   │   │   └── opik_client.cpython-312.pyc
+│   │   ├── llm_client.py
+│   │   └── opik_client.py
+│   └── tests
+│       ├── __pycache__
+│       │   ├── conftest.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_agent_integration_corrected.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_agent_integration_fixed.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_agent_integration.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_agents_patched.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_database_operations.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_integration_basic.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_integration_final.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_integration_flow_simple.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_integration_flow.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_main.cpython-312-pytest-9.0.2.pyc
+│       │   └── test_selected_agents.cpython-312-pytest-9.0.2.pyc
+│       ├── agents
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── __init__.cpython-312.pyc
+│       │   │   ├── test_challenge_agent.cpython-312-pytest-9.0.2.pyc
+│       │   │   ├── test_dag_builder_agent.cpython-312-pytest-9.0.2.pyc
+│       │   │   ├── test_research_agent.cpython-312-pytest-9.0.2.pyc
+│       │   │   └── test_tutor_agent.cpython-312-pytest-9.0.2.pyc
+│       │   ├── test_challenge_agent.py
+│       │   ├── test_dag_builder_agent.py
+│       │   ├── test_research_agent.py
+│       │   └── test_tutor_agent.py
+│       ├── e2e
+│       │   ├── __pycache__
+│       │   │   └── test_real_api_e2e.cpython-312-pytest-9.0.2.pyc
+│       │   ├── README.md
+│       │   ├── run_e2e_tests.sh
+│       │   └── test_real_api_e2e.py
+│       ├── test_database_operations.py
+│       └── test_main.py
 ├── frontend
 │   ├── app
 │   │   ├── (app)
 │   │   │   ├── layout.tsx
 │   │   │   └── projects
 │   │   │       ├── [projectId]
+│   │   │       │   ├── challenge
 │   │   │       │   └── page.tsx
 │   │   │       ├── new
 │   │   │       │   └── page.tsx
@@ -55,12 +114,23 @@
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
+│   ├── components
+│   │   ├── challenge
+│   │   │   └── TutorHint.tsx
+│   │   ├── dag
+│   │   │   ├── DagView.tsx
+│   │   │   └── NodeDetailsPanel.tsx
+│   │   ├── Navbar.tsx
+│   │   └── ui
+│   │       └── Notification.tsx
 │   ├── eslint.config.mjs
 │   ├── lib
 │   │   ├── api.ts
 │   │   ├── auth.ts
 │   │   ├── challenges.ts
-│   │   └── paths.ts
+│   │   ├── paths.ts
+│   │   ├── supabase.ts
+│   │   └── useAuth.ts
 │   ├── next-env.d.ts
 │   ├── next.config.ts
 │   ├── package-lock.json
@@ -76,4 +146,4 @@
 │   └── tsconfig.json
 └── project-structure.txt
 
-22 directories, 55 files
+37 directories, 110 files

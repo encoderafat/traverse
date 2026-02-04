@@ -1,9 +1,9 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routes import paths, challenges, progress
-from backend.models import Base
-from backend.db import engine
+from routes import paths, challenges, progress
+from models import Base
+from db import engine
 
 
 app = FastAPI(title="Traverse API")
@@ -20,9 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(paths.router)
-app.include_router(challenges.router)
-app.include_router(progress.router)
+app.include_router(paths.router, prefix="/api")
+app.include_router(challenges.router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
 
 @app.get("/")
 def root():

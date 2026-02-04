@@ -2,7 +2,7 @@ import pytest
 import json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.models import Base, LearningPath, PathNode, PathEdge, Challenge, ChallengeAttempt, NodeProgress, NodeProgressStatus
+from models import Base, LearningPath, PathNode, PathEdge, Challenge, ChallengeAttempt, NodeProgress, NodeProgressStatus
 from uuid import uuid4
 
 

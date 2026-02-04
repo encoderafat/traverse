@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { fetchProjects, Project } from "@/lib/paths";
+import { fetchPaths, LearningPath } from "@/lib/paths";
 import { useRouter } from "next/navigation";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<LearningPath[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +19,7 @@ export default function ProjectsPage() {
         return;
       }
 
-      fetchProjects()
+      fetchPaths()
         .then(setProjects)
         .finally(() => setLoading(false));
     });

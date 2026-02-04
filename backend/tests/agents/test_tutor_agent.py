@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from backend.agents.tutor_agent import run_tutor_agent, run_hint_agent, eval_tutor_feedback
+from agents.tutor_agent import run_tutor_agent, run_hint_agent, eval_tutor_feedback
 
 
 class TestTutorAgent:
     """Unit tests for the tutor agent."""
 
-    @patch('backend.agents.tutor_agent.opik_tracer')
-    @patch('backend.agents.tutor_agent.call_gemini')
+    @patch('agents.tutor_agent.opik_tracer')
+    @patch('agents.tutor_agent.call_gemini')
     def test_run_tutor_agent_success(self, mock_call_gemini, mock_opik_tracer):
         """Test successful execution of the tutor agent."""
         # Mock the LLM response with valid JSON
@@ -57,8 +57,8 @@ class TestTutorAgent:
         # Verify that the mock was called
         mock_call_gemini.assert_called()
 
-    @patch('backend.agents.tutor_agent.opik_tracer')
-    @patch('backend.agents.tutor_agent.call_gemini')
+    @patch('agents.tutor_agent.opik_tracer')
+    @patch('agents.tutor_agent.call_gemini')
     def test_run_tutor_agent_json_parsing_error(self, mock_call_gemini, mock_opik_tracer):
         """Test tutor agent when LLM returns invalid JSON."""
         # Mock invalid JSON response
@@ -89,8 +89,8 @@ class TestTutorAgent:
         assert result["pass"] is False
         assert "Could not parse grading" in result["feedback_summary"]
 
-    @patch('backend.agents.tutor_agent.opik_tracer')
-    @patch('backend.agents.tutor_agent.call_gemini')
+    @patch('agents.tutor_agent.opik_tracer')
+    @patch('agents.tutor_agent.call_gemini')
     def test_run_tutor_agent_high_attempts_blocked(self, mock_call_gemini, mock_opik_tracer):
         """Test tutor agent behavior with high attempts count (should suggest adaptation)."""
         # Mock the LLM response with adaptation suggestion
@@ -165,8 +165,8 @@ class TestTutorAgent:
         assert isinstance(details, dict)
         assert 0.0 <= score <= 1.0
 
-    @patch('backend.agents.tutor_agent.opik_tracer')
-    @patch('backend.agents.tutor_agent.call_gemini')
+    @patch('agents.tutor_agent.opik_tracer')
+    @patch('agents.tutor_agent.call_gemini')
     def test_run_hint_agent(self, mock_call_gemini, mock_opik_tracer):
         """Test the hint agent function."""
         # Mock the LLM response for hint
@@ -185,8 +185,8 @@ class TestTutorAgent:
         # Verify that the mock was called
         mock_call_gemini.assert_called()
 
-    @patch('backend.agents.tutor_agent.opik_tracer')
-    @patch('backend.agents.tutor_agent.call_gemini')
+    @patch('agents.tutor_agent.opik_tracer')
+    @patch('agents.tutor_agent.call_gemini')
     def test_run_tutor_agent_with_prior_attempts(self, mock_call_gemini, mock_opik_tracer):
         """Test tutor agent with prior attempts summary."""
         # Mock the LLM response

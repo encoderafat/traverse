@@ -1,3 +1,4 @@
+from enum import Enum
 import uuid
 from datetime import datetime
 from sqlalchemy import (
@@ -60,7 +61,7 @@ class PathEdge(Base):
     to_node_id = Column(Integer, ForeignKey("path_nodes.id"), nullable=False)
 
 
-class NodeProgressStatus:
+class NodeProgressStatus(str, Enum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -73,6 +74,7 @@ class NodeProgress(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     node_id = Column(Integer, ForeignKey("path_nodes.id"), nullable=False)
+    learning_path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=False, index=True)
 
     status = Column(String, nullable=False, default=NodeProgressStatus.NOT_STARTED)
     last_score = Column(Float, nullable=True)

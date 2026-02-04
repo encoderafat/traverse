@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from 'next/navigation';
 import {
   getOrCreateChallenge,
   submitChallenge,
@@ -13,11 +14,10 @@ import { fetchPathProgress } from "@/lib/paths";
 import Link from 'next/link';
 import TutorHint from "@/components/challenge/TutorHint";
 
-export default function ChallengePage({
-  params,
-}: {
-  params: { projectId: string; nodeId: string };
-}) {
+export default function ChallengePage() {
+  const params = useParams();
+  const { projectId, nodeId } = params;
+
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [answer, setAnswer] = useState("");
   const [tutorResult, setTutorResult] = useState<TutorResult | null>(null);
@@ -30,12 +30,17 @@ export default function ChallengePage({
   const [isRequestingHint, setIsRequestingHint] = useState(false);
 
   useEffect(() => {
+    if (!projectId || !nodeId) {
+      setLoading(false);
+      return;
+    }
+
     async function loadChallenge() {
       setLoading(true);
       try {
         const ch = await getOrCreateChallenge(
-          Number(params.projectId),
-          Number(params.nodeId)
+          Number(projectId),
+          Number(nodeId)
         );
         setChallenge(ch);
       } catch (error) {
@@ -45,7 +50,7 @@ export default function ChallengePage({
       }
     }
     loadChallenge();
-  }, [params.projectId, params.nodeId]);
+  }, [projectId, nodeId]);
 
   async function submitAnswer() {
     if (!challenge) return;
@@ -55,7 +60,7 @@ export default function ChallengePage({
       const result = await submitChallenge(challenge.challenge_id, answer);
       setTutorResult(result);
       // Optionally refresh progress in the background if needed elsewhere
-      fetchPathProgress(params.projectId);
+      fetchPathProgress(projectId as string);
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
@@ -92,7 +97,7 @@ export default function ChallengePage({
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold text-red-600">Failed to Load Challenge</h2>
         <p className="text-muted mt-2">There was an error fetching the challenge. Please try again.</p>
-        <Link href={`/projects/${params.projectId}`} className="mt-4 inline-block bg-accent text-white font-bold py-2 px-4 rounded">
+        <Link href={`/projects/${projectId}`} className="mt-4 inline-block bg-accent text-white font-bold py-2 px-4 rounded">
             Go Back to Project
         </Link>
       </div>
@@ -190,7 +195,10 @@ export default function ChallengePage({
                     Retry Challenge
                     </button>
                 )}
-                <Link href={`/projects/${params.projectId}?refreshed=true`} className="flex-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out">
+                <Link
+                  href={`/projects/${projectId}${tutorResult.remedial_added ? "?refreshed=true" : ""}`}
+                  className="flex-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out"
+                >
                     Back to Learning Path
                 </Link>
               </div>

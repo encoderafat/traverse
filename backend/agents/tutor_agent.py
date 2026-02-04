@@ -3,8 +3,8 @@
 from typing import Dict, Any, Optional
 import json
 
-from backend.services.llm_client import call_gemini
-from backend.services.opik_client import create_opik_tracer
+from services.llm_client import call_gemini
+from services.opik_client import create_opik_tracer
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -135,8 +135,20 @@ def run_tutor_agent(
     Grades a learner's answer and provides feedback.
     Fully instrumented with core Opik tracing.
     """
+    from opik import start_as_current_trace, start_as_current_span
 
-    user_msg = f"""
+    with start_as_current_trace(
+        name="tutor_feedback",
+        tags=["tutoring", "evaluation"],
+        metadata={
+            "user_id": user_id,
+            "challenge_id": challenge.get("id"),
+            "challenge_type": challenge.get("challenge_type"),
+            "attempts_count": attempts_count,
+        },
+        project_name="learning-paths"
+    ) as trace:
+        user_msg = f"""
 Challenge prompt:
 {challenge.get("prompt")}
 
@@ -154,36 +166,34 @@ Prior attempts summary (optional):
 {prior_attempts_summary or "N/A"}
 """
 
-    span = None
-    if opik_tracer:
-        span = opik_tracer.start_span(
-            name="tutor_feedback",
-            metadata={
-                "user_id": user_id,
-                "challenge_id": challenge.get("id"),
-                "challenge_type": challenge.get("challenge_type"),
-                "attempts_count": attempts_count,
-            },
-        )
-
-    try:
-        raw_output = call_gemini(
-            system_instruction=TUTOR_SYSTEM_PROMPT,
-            user_message=user_msg,
-        )
-
-        if span:
-            span.add_event(
-                name="model_response_received",
-                metadata={"raw_output_preview": raw_output[:500]},
+        with start_as_current_span(
+            name="call_gemini",
+            type="llm",
+            metadata={"model": "gemini"}
+        ) as span:
+            raw_output = call_gemini(
+                system_instruction=TUTOR_SYSTEM_PROMPT,
+                user_message=user_msg,
             )
+            span.input = {"user_msg": user_msg[:500]}  # Limit input size
+            span.output = {"raw_output": raw_output[:500]}  # Limit output size
 
         try:
-            parsed = json.loads(raw_output)
+            cleaned_output = raw_output.strip()
+            if cleaned_output.startswith("```"):
+                lines = cleaned_output.splitlines()
+                # Drop opening fence (``` or ```json) and closing fence
+                if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+                    cleaned_output = "\n".join(lines[1:-1]).strip()
+            parsed = json.loads(cleaned_output)
             # Ensure adaptation_suggestion is null if not provided
             if "adaptation_suggestion" not in parsed:
                 parsed["adaptation_suggestion"] = None
         except Exception as parse_error:
+            # Temporary debug: surface raw output to help diagnose JSON issues
+            print("TUTOR_AGENT_RAW_OUTPUT_START")
+            print(raw_output)
+            print("TUTOR_AGENT_RAW_OUTPUT_END")
             parsed = {
                 "dimension_scores": [],
                 "overall_score": 0.0,
@@ -193,38 +203,15 @@ Prior attempts summary (optional):
                 "adaptation_suggestion": None,
             }
 
-            if span:
-                span.add_event(
-                    name="json_parse_failure",
-                    metadata={
-                        "error": str(parse_error),
-                        "raw_output_preview": raw_output[:500],
-                    },
-                )
 
         # ---- Evaluation hook ---------------------------------------
         score, details = eval_tutor_feedback(challenge, user_answer, parsed)
-        if span:
-            span.add_evaluation(
-                name="tutor_feedback_quality",
-                score=score,
-                details=details,
-            )
+
+        trace.input = {"challenge_id": challenge.get("id"), "attempts_count": attempts_count}
+        trace.output = {"overall_score": parsed.get("overall_score"), "pass": parsed.get("pass")}
 
 
         return parsed
-
-    except Exception as exc:
-        if span:
-            span.add_event(
-                name="tutor_agent_exception",
-                metadata={"error": str(exc)},
-            )
-        raise
-
-    finally:
-        if span:
-            span.end()
 
 def run_hint_agent(
     challenge_prompt: str,
@@ -246,4 +233,3 @@ Hint Level: {hint_level}
         user_message=user_msg,
     )
     return hint_text
-
