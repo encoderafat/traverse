@@ -228,6 +228,7 @@ def test_node_progress_crud(test_db):
     progress = NodeProgress(
         user_id=user_id,
         node_id=node.id,
+        learning_path_id=path.id,
         status=NodeProgressStatus.NOT_STARTED,
         attempts_count=0,
         last_score=None
@@ -320,6 +321,7 @@ def test_relationships_consistency(test_db):
     progress = NodeProgress(
         user_id=user_id,
         node_id=node1.id,
+        learning_path_id=path.id,
         status=NodeProgressStatus.IN_PROGRESS
     )
     test_db.add(progress)

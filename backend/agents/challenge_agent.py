@@ -5,6 +5,7 @@ import json
 
 from services.llm_client import call_gemini
 from services.opik_client import create_opik_tracer
+from services.ab_testing import select_variant
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -43,6 +44,10 @@ Output STRICT JSON:
 }
 """
 
+# Bump this when the prompt changes meaningfully.
+PROMPT_VERSION = "challenge_v1"
+EXPERIMENT_NAME = "challenge_prompt"
+EXPERIMENT_VARIANTS = ["A", "B"]
 # -----------------------------------------------------------------------------
 # Evaluation Prompt
 # -----------------------------------------------------------------------------
@@ -119,9 +124,16 @@ def run_challenge_agent(
     """
     from opik import start_as_current_trace, start_as_current_span
 
+    variant = select_variant(user_id, EXPERIMENT_NAME, EXPERIMENT_VARIANTS)
+    prompt_by_variant = {
+        "A": CHALLENGE_SYSTEM_PROMPT,
+        "B": CHALLENGE_SYSTEM_PROMPT,
+    }
+    system_prompt = prompt_by_variant[variant]
+
     with start_as_current_trace(
         name="generate_challenge",
-        tags=["challenge", "assessment"],
+        tags=["challenge", "assessment", PROMPT_VERSION, f"{EXPERIMENT_NAME}:{variant}"],
         metadata={
             "user_id": user_id,
             "path_id": path_id,
@@ -129,6 +141,9 @@ def run_challenge_agent(
             "node_title": node.get("title"),
             "domain_hint": domain_hint,
             "has_research_context": bool(research_context),
+            "prompt_version": PROMPT_VERSION,
+            "experiment": EXPERIMENT_NAME,
+            "variant": variant,
         },
         project_name="learning-paths"
     ) as trace:
@@ -162,7 +177,7 @@ Create ONE challenge as described in the system prompt, based on the provided re
             metadata={"model": "gemini"}
         ) as span:
             raw_output = call_gemini(
-                system_instruction=CHALLENGE_SYSTEM_PROMPT,
+                system_instruction=system_prompt,
                 user_message=user_msg,
             )
             span.input = {"user_msg": user_msg[:500]}  # Limit input size
@@ -170,7 +185,7 @@ Create ONE challenge as described in the system prompt, based on the provided re
 
         try:
             parsed = json.loads(raw_output)
-        except Exception as parse_error:
+        except Exception:
             parsed = {
                 "error": "invalid_json_from_model",
                 "challenge_type": None,
@@ -184,7 +199,14 @@ Create ONE challenge as described in the system prompt, based on the provided re
         score, details = eval_challenge_quality(node, parsed)
 
         trace.input = {"node_title": node.get("title"), "domain_hint": domain_hint}
-        trace.output = {"challenge_type": parsed.get("challenge_type"), "prompt_length": len(parsed.get("prompt", ""))}
+        trace.output = {
+            "challenge_type": parsed.get("challenge_type"),
+            "prompt_length": len(parsed.get("prompt", "")),
+            "llm_invalid_json": parsed.get("error") == "invalid_json_from_model",
+            "eval_overall_score": score,
+            "eval_dimension_scores": details.get("dimension_scores"),
+            "eval_failed": "error" in details,
+        }
 
 
         return parsed

@@ -15,6 +15,78 @@ from core.auth import get_optional_user, require_role, enforce_ownership, get_cu
 
 router = APIRouter(tags=["paths"])
 
+def _validate_dag(dag: dict) -> list[str]:
+    """
+    Validate structure and acyclicity of a DAG produced by the agent.
+    Returns a list of error messages; empty list means valid.
+    """
+    errors: list[str] = []
+    nodes = dag.get("nodes", [])
+    edges = dag.get("edges", [])
+
+    if not isinstance(nodes, list) or not nodes:
+        errors.append("DAG must include a non-empty 'nodes' list.")
+        return errors
+
+    node_ids = []
+    for node in nodes:
+        node_id = node.get("id")
+        if not node_id:
+            errors.append("All nodes must have an 'id'.")
+            continue
+        node_ids.append(node_id)
+
+    if len(set(node_ids)) != len(node_ids):
+        errors.append("Node ids must be unique.")
+
+    if not isinstance(edges, list):
+        errors.append("DAG 'edges' must be a list.")
+        return errors
+
+    node_id_set = set(node_ids)
+    edge_set = set()
+    in_degree: dict[str, int] = {nid: 0 for nid in node_id_set}
+    adjacency: dict[str, list[str]] = {nid: [] for nid in node_id_set}
+
+    for edge in edges:
+        src = edge.get("from")
+        dst = edge.get("to")
+        if not src or not dst:
+            errors.append("Each edge must include 'from' and 'to'.")
+            continue
+        if src == dst:
+            errors.append(f"Self-edge detected at '{src}'.")
+            continue
+        if src not in node_id_set or dst not in node_id_set:
+            errors.append(f"Edge references unknown node: {src} -> {dst}.")
+            continue
+        key = (src, dst)
+        if key in edge_set:
+            errors.append(f"Duplicate edge detected: {src} -> {dst}.")
+            continue
+        edge_set.add(key)
+        adjacency[src].append(dst)
+        in_degree[dst] += 1
+
+    if errors:
+        return errors
+
+    # Kahn's algorithm for cycle detection
+    queue = [nid for nid, deg in in_degree.items() if deg == 0]
+    visited = 0
+    while queue:
+        current = queue.pop()
+        visited += 1
+        for neighbor in adjacency[current]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if visited != len(node_id_set):
+        errors.append("DAG contains a cycle.")
+
+    return errors
+
 
 @router.post("/paths", response_model=LearningPathResponse)
 def create_path(
@@ -43,6 +115,26 @@ def create_path(
         competencies=research_competencies,
         user_background=payload.user_background,
     )
+
+    validation_errors = _validate_dag(dag)
+    if validation_errors:
+        # Retry once to reduce user-facing failures from occasional LLM hiccups.
+        dag = run_dag_builder_agent(
+            user_id=user_id,
+            goal_title=payload.goal_title,
+            competencies=research_competencies,
+            user_background=payload.user_background,
+        )
+        validation_errors = _validate_dag(dag)
+
+    if validation_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "We couldn't generate a valid learning graph. Please try again.",
+                "errors": validation_errors,
+            },
+        )
 
     lp = LearningPath(
         user_id=user_uuid,

@@ -9,6 +9,19 @@ export interface LearningPath {
   domain_hint?: string;     // Added from original payload
   level?: string;           // Added from original payload
   user_background?: string; // Added from original payload
+  research_context?: any[];
+  nodes?: {
+    id: number;
+    title: string;
+    description: string;
+    node_type: string;
+    estimated_minutes?: number;
+    metadata_json?: any;
+  }[];
+  edges?: {
+    from_node_id: number;
+    to_node_id: number;
+  }[];
 }
 
 export async function fetchPaths(): Promise<LearningPath[]> {

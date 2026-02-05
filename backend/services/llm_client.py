@@ -4,6 +4,7 @@ from core.config import GOOGLE_API_KEY, GEMINI_MODEL, SERPAPI_API_KEY
 import requests
 from typing import Dict, Any
 from bs4 import BeautifulSoup
+import time
 
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
@@ -13,15 +14,24 @@ def call_gemini(
     model: str = GEMINI_MODEL,
     temperature: float = 0.6,
 ) -> str:
-    response = client.models.generate_content(
-        model=model,
-        contents=types.Part.from_text(text=user_message),
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=temperature,
-        ),
-    )
-    return response.text
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=types.Part.from_text(text=user_message),
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                ),
+            )
+            return response.text
+        except Exception as exc:
+            message = str(exc)
+            is_overloaded = "503" in message or "UNAVAILABLE" in message or "overloaded" in message.lower()
+            if not is_overloaded or attempt == max_retries:
+                raise
+            time.sleep(0.6 * (2 ** attempt))
 
 
 def google_web_search(query: str, num_results: int = 5) -> Dict[str, Any]:
@@ -39,16 +49,8 @@ def google_web_search(query: str, num_results: int = 5) -> Dict[str, Any]:
         return response.json()
     except Exception as e:
         print(f"Error in google_web_search: {e}")
-        # Return a mock response in case of error
-        return {
-            "results": [
-                {
-                    "title": f"Mock result for {query}",
-                    "link": "https://example.com",
-                    "snippet": f"This is a mock result for the query: {query}"
-                }
-            ]
-        }
+        # Return empty results to avoid contaminating research with mock data
+        return {"results": []}
 
 def web_fetch(url: str) -> str:
     """Fetch content from a given URL."""

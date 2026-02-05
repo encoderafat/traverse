@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
@@ -12,7 +13,7 @@ class UserCreate(UserBase):
 
 
 class User(UserBase):
-    id: int
+    id: UUID
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
@@ -20,7 +21,7 @@ class User(UserBase):
 
 class LearningPathBase(BaseModel):
     goal_title: str
-    summary: str
+    summary: Optional[str] = None
 
 
 class LearningPathCreate(LearningPathBase):
@@ -37,7 +38,7 @@ class CreatePathRequest(BaseModel):
 
 class LearningPath(LearningPathBase):
     id: int
-    user_id: int
+    user_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -116,6 +117,8 @@ class Hint(BaseModel):
 class ChallengeCreateResponse(BaseModel):
     challenge_id: int
     prompt: str
+    node_id: int
+    difficulty: Optional[str] = None
 
 
 class ChallengeSubmitRequest(BaseModel):

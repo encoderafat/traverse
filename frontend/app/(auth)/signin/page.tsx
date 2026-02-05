@@ -1,11 +1,16 @@
 "use client";
 
-import { signInWithGithub } from "@/lib/auth";
+import { signInWithGithub, signInWithGoogle } from "@/lib/auth";
 
 export default function SignInPage() {
   const handleSignIn = async () => {
     const redirectTo = `${location.origin}/projects`;
     await signInWithGithub(redirectTo);
+  };
+
+  const handleGoogleSignIn = async () => {
+    const redirectTo = `${location.origin}/projects`;
+    await signInWithGoogle(redirectTo);
   };
 
   return (
@@ -24,6 +29,13 @@ export default function SignInPage() {
           onClick={handleSignIn}
         >
           Sign in with GitHub
+        </button>
+
+        <button
+          className="w-full mt-3 rounded-md border border-gray-300 bg-white text-gray-900 py-2 text-sm hover:bg-gray-50"
+          onClick={handleGoogleSignIn}
+        >
+          Sign in with Google
         </button>
       </div>
     </div>

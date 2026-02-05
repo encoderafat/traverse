@@ -18,11 +18,22 @@ from agents.challenge_agent import run_challenge_agent
 from agents.tutor_agent import run_tutor_agent, run_hint_agent
 from agents.dag_builder_agent import run_remedial_node_agent
 from core.auth import get_current_user_id
+from routes.paths import _validate_dag
 
 router = APIRouter(tags=["challenges"])
 
 class HintRequest(BaseModel):
     hintLevel: int
+
+MAX_REMEDIAL_NODES_PER_PATH = 3
+
+def _path_to_dag(db: Session, path_id: int) -> dict:
+    nodes = db.query(PathNode).filter(PathNode.path_id == path_id).all()
+    edges = db.query(PathEdge).filter(PathEdge.path_id == path_id).all()
+    return {
+        "nodes": [{"id": n.id} for n in nodes],
+        "edges": [{"from": e.from_node_id, "to": e.to_node_id} for e in edges],
+    }
 
 @router.post("/paths/{path_id}/nodes/{node_id}/challenges", response_model=ChallengeCreateResponse)
 def create_or_get_challenge(
@@ -73,11 +84,14 @@ def create_or_get_challenge(
             research_context=lp.research_context or [],
         )
     except Exception as exc:
-        # Surface the underlying error so we can debug quickly.
-        raise HTTPException(
-            status_code=503,
-            detail=f"Challenge generation failed: {exc}",
-        ) from exc
+        message = str(exc)
+        is_overloaded = "503" in message or "UNAVAILABLE" in message or "overloaded" in message.lower()
+        detail = (
+            "The model is overloaded right now. Please try again in a moment."
+            if is_overloaded
+            else f"Challenge generation failed: {exc}"
+        )
+        raise HTTPException(status_code=503, detail=detail) from exc
 
     # 4. Save the new challenge to DB
     expected_outline = challenge_data.get("expected_answer_outline")
@@ -184,6 +198,21 @@ def submit_challenge(
 
         # ---- ADAPTIVE INTERVENTION LOGIC ----
         if (new_status == NodeProgressStatus.BLOCKED and adaptation_suggestion and not passed):
+            # Cap remedial nodes per path to prevent DAG explosion
+            remedial_count = db.query(PathNode).filter(
+                PathNode.path_id == path.id,
+                PathNode.node_type == "remedial",
+            ).count()
+            if remedial_count >= MAX_REMEDIAL_NODES_PER_PATH:
+                db.commit()
+                return ChallengeSubmitResponse(
+                    score=overall_score,
+                    pass_node=passed,
+                    feedback_summary=tutor_result.get("feedback_summary", ""),
+                    suggestions=tutor_result.get("suggestions", []),
+                    remedial_added=False,
+                )
+
             # Guard: avoid creating multiple remedial nodes for the same struggling node
             existing_remedial = db.query(PathEdge).join(PathNode, PathEdge.from_node_id == PathNode.id).filter(
                 PathEdge.path_id == path.id,
@@ -201,61 +230,88 @@ def submit_challenge(
                     remedial_added=False,
                 )
 
-            # 1. Generate the remedial node
-            remedial_node_data = run_remedial_node_agent(
-                user_id=user_id,
-                goal_title=path.goal_title,
-                struggling_node_title=struggling_node.title,
-                adaptation_suggestion=adaptation_suggestion,
-            )
+            # Use a nested transaction (savepoint) so we can rollback remediation safely.
+            nested = db.begin_nested()
+            try:
+                    # 1. Generate the remedial node (retry once if malformed)
+                    remedial_node_data = run_remedial_node_agent(
+                        user_id=user_id,
+                        goal_title=path.goal_title,
+                        struggling_node_title=struggling_node.title,
+                        struggling_node_description=struggling_node.description,
+                        adaptation_suggestion=adaptation_suggestion,
+                    )
+                    if not remedial_node_data.get("title") or not remedial_node_data.get("description"):
+                        remedial_node_data = run_remedial_node_agent(
+                            user_id=user_id,
+                            goal_title=path.goal_title,
+                            struggling_node_title=struggling_node.title,
+                            struggling_node_description=struggling_node.description,
+                            adaptation_suggestion=adaptation_suggestion,
+                        )
+                    if not remedial_node_data.get("title") or not remedial_node_data.get("description"):
+                        nested.rollback()
+                        remedial_added = False
+                        raise ValueError("invalid_remedial_node")
 
-            # 2. Create the new node in the DB
-            remedial_node = PathNode(
-                path_id=path.id,
-                title=remedial_node_data["title"],
-                description=remedial_node_data["description"],
-                node_type="remedial",
-                estimated_minutes=remedial_node_data.get("estimated_minutes"),
-                metadata_json={"tags": remedial_node_data.get("tags", [])},
-            )
-            db.add(remedial_node)
-            db.flush() # Flush to get the new node's ID
+                    # 2. Create the new node in the DB
+                    remedial_node = PathNode(
+                        path_id=path.id,
+                        title=remedial_node_data["title"],
+                        description=remedial_node_data["description"],
+                        node_type="remedial",
+                        estimated_minutes=remedial_node_data.get("estimated_minutes"),
+                        metadata_json={"tags": remedial_node_data.get("tags", [])},
+                    )
+                    db.add(remedial_node)
+                    db.flush() # Flush to get the new node's ID
 
-            # Create a progress entry for the new node
-            db.add(NodeProgress(
-                user_id=user_uuid,
-                node_id=remedial_node.id,
-                learning_path_id=path.id,
-                status=NodeProgressStatus.NOT_STARTED,
-            ))
+                    # Create a progress entry for the new node
+                    db.add(NodeProgress(
+                        user_id=user_uuid,
+                        node_id=remedial_node.id,
+                        learning_path_id=path.id,
+                        status=NodeProgressStatus.NOT_STARTED,
+                    ))
 
-            # 3. Perform Graph Surgery
-            # Find incoming edges to the struggling node and reroute them
-            incoming_edges = db.query(PathEdge).filter(
-                PathEdge.path_id == path.id,
-                PathEdge.to_node_id == struggling_node.id
-            ).all()
+                    # 3. Perform Graph Surgery
+                    # Find incoming edges to the struggling node and reroute them
+                    incoming_edges = db.query(PathEdge).filter(
+                        PathEdge.path_id == path.id,
+                        PathEdge.to_node_id == struggling_node.id
+                    ).all()
 
-            if not incoming_edges:
-                # If the struggling node was a root, the new node becomes a root
-                pass
-            else:
-                for edge in incoming_edges:
-                    edge.to_node_id = remedial_node.id
+                    if not incoming_edges:
+                        # If the struggling node was a root, the new node becomes a root
+                        pass
+                    else:
+                        for edge in incoming_edges:
+                            edge.to_node_id = remedial_node.id
 
-            # Create a new edge from the remedial node to the struggling node
-            db.add(PathEdge(
-                path_id=path.id,
-                from_node_id=remedial_node.id,
-                to_node_id=struggling_node.id
-            ))
+                    # Create a new edge from the remedial node to the struggling node
+                    db.add(PathEdge(
+                        path_id=path.id,
+                        from_node_id=remedial_node.id,
+                        to_node_id=struggling_node.id
+                    ))
 
-            # 4. Reset the struggling node's progress
-            np.status = NodeProgressStatus.NOT_STARTED
-            np.attempts_count = 0
-            np.last_score = None
+                    # 4. Reset the struggling node's progress
+                    np.status = NodeProgressStatus.NOT_STARTED
+                    np.attempts_count = 0
+                    np.last_score = None
 
-            remedial_added = True
+                    # 5. Validate the updated graph before committing the remediation
+                    db.flush()
+                    validation_errors = _validate_dag(_path_to_dag(db, path.id))
+                    if validation_errors:
+                        nested.rollback()
+                        remedial_added = False
+                    else:
+                        nested.commit()
+                        remedial_added = True
+            except Exception:
+                nested.rollback()
+                remedial_added = False
     
     db.commit()
 

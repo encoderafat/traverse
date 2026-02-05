@@ -5,6 +5,7 @@ import json
 
 from services.llm_client import call_gemini, google_web_search, web_fetch
 from services.opik_client import create_opik_tracer
+from services.ab_testing import select_variant
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -16,8 +17,15 @@ You are an expert curriculum designer and career coach.
 Given a user's goal (any domain: career, fitness, creative, etc.) and provided research content, you will:
 1. Synthesize the main competencies and subskills required to achieve that goal *based on the provided research*.
 2. Express them as structured JSON.
-3. Avoid domain-specific jargon unless necessary; explain in plain language.
+3. Use specific, concrete language; avoid vague phrasing.
 4. Ensure the competencies are grounded in the provided external content.
+
+Quality requirements (very important):
+- Each competency should be specific enough to guide learning (avoid overly broad items like "LLM Basics").
+- The description must include: why it matters, 2–3 key subskills, and a concrete outcome.
+- Example tasks must be realistic and job-like (debugging, designing, shipping, optimizing), not textbook.
+- Include "tacit" or "hidden" expertise when evident (e.g., tradeoffs, operational pitfalls).
+- Prefer 10–20 competencies with strong coverage over many shallow ones.
 
 Output strictly valid JSON in this schema:
 {
@@ -26,7 +34,7 @@ Output strictly valid JSON in this schema:
     {
       "id": "c1",
       "name": "Short name of competency",
-      "description": "1-3 sentence explanation",
+      "description": "3-5 sentence explanation with why it matters, key subskills, and outcome",
       "type": "technical | conceptual | soft-skill | meta",
       "example_tasks": [
         "Example real-world task #1",
@@ -36,6 +44,11 @@ Output strictly valid JSON in this schema:
   ]
 }
 """
+
+# Bump this when the prompt changes meaningfully.
+PROMPT_VERSION = "research_v1"
+EXPERIMENT_NAME = "research_prompt"
+EXPERIMENT_VARIANTS = ["A", "B"]
 
 # -----------------------------------------------------------------------------
 # Opik Tracer (module-level singleton)
@@ -118,14 +131,24 @@ def run_research_agent(
     """
     from opik import start_as_current_trace, start_as_current_span
 
+    variant = select_variant(user_id, EXPERIMENT_NAME, EXPERIMENT_VARIANTS)
+    prompt_by_variant = {
+        "A": RESEARCH_SYSTEM_PROMPT,
+        "B": RESEARCH_SYSTEM_PROMPT,
+    }
+    system_prompt = prompt_by_variant[variant]
+
     with start_as_current_trace(
         name="derive_competencies",
-        tags=["research", "competency-extraction"],
+        tags=["research", "competency-extraction", PROMPT_VERSION, f"{EXPERIMENT_NAME}:{variant}"],
         metadata={
             "user_id": user_id,
             "goal_title": goal_title,
             "domain_hint": domain_hint,
             "level": level,
+            "prompt_version": PROMPT_VERSION,
+            "experiment": EXPERIMENT_NAME,
+            "variant": variant,
         },
         project_name="learning-paths"
     ) as trace:
@@ -186,7 +209,7 @@ Derive competencies as described, primarily using the provided Research Content.
             metadata={"model": "gemini"}
         ) as span:
             raw_output = call_gemini(
-                system_instruction=RESEARCH_SYSTEM_PROMPT,
+                system_instruction=system_prompt,
                 user_message=user_msg,
             )
             span.input = {"user_msg": user_msg[:500]}  # Limit input size
@@ -194,7 +217,7 @@ Derive competencies as described, primarily using the provided Research Content.
 
         try:
             parsed = json.loads(raw_output)
-        except Exception as parse_error:
+        except Exception:
             parsed = {
                 "normalized_goal": goal_title,
                 "competencies": [],
@@ -205,6 +228,15 @@ Derive competencies as described, primarily using the provided Research Content.
         score, details = eval_research_quality(goal_title, parsed)
 
         trace.input = {"goal_title": goal_title, "goal_description": goal_description}
-        trace.output = {"competencies_count": len(parsed.get("competencies", []))}
+        trace.output = {
+            "competencies_count": len(parsed.get("competencies", [])),
+            "search_queries_count": len(search_queries),
+            "urls_fetched": len(fetched_content),
+            "has_research_context": bool(fetched_content),
+            "llm_invalid_json": parsed.get("error") == "invalid_json_from_model",
+            "eval_overall_score": score,
+            "eval_dimension_scores": details.get("dimension_scores"),
+            "eval_failed": "error" in details,
+        }
 
         return {"competencies": parsed, "research_context": fetched_content}

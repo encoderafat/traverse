@@ -5,6 +5,7 @@ import json
 
 from services.llm_client import call_gemini
 from services.opik_client import create_opik_tracer
+from services.ab_testing import select_variant
 
 # -----------------------------------------------------------------------------
 # System Prompt
@@ -42,6 +43,10 @@ Output STRICT JSON:
 }
 """
 
+# Bump this when the prompt changes meaningfully.
+PROMPT_VERSION = "tutor_v1"
+EXPERIMENT_NAME = "tutor_prompt"
+EXPERIMENT_VARIANTS = ["A", "B"]
 HINT_SYSTEM_PROMPT = """
 You are a Socratic tutor. Your goal is to guide, not to give answers.
 
@@ -137,14 +142,24 @@ def run_tutor_agent(
     """
     from opik import start_as_current_trace, start_as_current_span
 
+    variant = select_variant(user_id, EXPERIMENT_NAME, EXPERIMENT_VARIANTS)
+    prompt_by_variant = {
+        "A": TUTOR_SYSTEM_PROMPT,
+        "B": TUTOR_SYSTEM_PROMPT,
+    }
+    system_prompt = prompt_by_variant[variant]
+
     with start_as_current_trace(
         name="tutor_feedback",
-        tags=["tutoring", "evaluation"],
+        tags=["tutoring", "evaluation", PROMPT_VERSION, f"{EXPERIMENT_NAME}:{variant}"],
         metadata={
             "user_id": user_id,
             "challenge_id": challenge.get("id"),
             "challenge_type": challenge.get("challenge_type"),
             "attempts_count": attempts_count,
+            "prompt_version": PROMPT_VERSION,
+            "experiment": EXPERIMENT_NAME,
+            "variant": variant,
         },
         project_name="learning-paths"
     ) as trace:
@@ -172,7 +187,7 @@ Prior attempts summary (optional):
             metadata={"model": "gemini"}
         ) as span:
             raw_output = call_gemini(
-                system_instruction=TUTOR_SYSTEM_PROMPT,
+                system_instruction=system_prompt,
                 user_message=user_msg,
             )
             span.input = {"user_msg": user_msg[:500]}  # Limit input size
@@ -208,7 +223,15 @@ Prior attempts summary (optional):
         score, details = eval_tutor_feedback(challenge, user_answer, parsed)
 
         trace.input = {"challenge_id": challenge.get("id"), "attempts_count": attempts_count}
-        trace.output = {"overall_score": parsed.get("overall_score"), "pass": parsed.get("pass")}
+        trace.output = {
+            "overall_score": parsed.get("overall_score"),
+            "pass": parsed.get("pass"),
+            "suggestions_count": len(parsed.get("suggestions", [])),
+            "adaptation_suggestion_present": bool(parsed.get("adaptation_suggestion")),
+            "eval_overall_score": score,
+            "eval_dimension_scores": details.get("dimension_scores"),
+            "eval_failed": "error" in details,
+        }
 
 
         return parsed
