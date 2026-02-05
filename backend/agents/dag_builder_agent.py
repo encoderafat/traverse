@@ -99,15 +99,34 @@ Generated DAG JSON:
 
 Please evaluate this DAG.
 """
-    try:
-        raw = call_gemini(
-            system_instruction=DAG_EVAL_SYSTEM_PROMPT,
-            user_message=eval_user_msg,
-        )
-        parsed = json.loads(raw)
-        return parsed.get("overall_score", 0.0), parsed
-    except Exception:
-        return 0.5, {"error": "dag_evaluation_failed"}
+    def _parse_eval(raw_text: str) -> Dict[str, Any]:
+        cleaned = raw_text.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.splitlines()
+            if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+                cleaned = "\n".join(lines[1:-1]).strip()
+        if "{" in cleaned and "}" in cleaned:
+            cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
+        return json.loads(cleaned)
+
+    raw = ""
+    parsed = None
+    for _ in range(2):
+        try:
+            raw = call_gemini(
+                system_instruction=DAG_EVAL_SYSTEM_PROMPT,
+                user_message=eval_user_msg,
+            )
+            parsed = _parse_eval(raw)
+            return parsed.get("overall_score", 0.0), parsed
+        except Exception:
+            parsed = None
+
+    if raw:
+        print("DAG_EVAL_JSON_PARSE_ERROR")
+        print(raw[:2000])
+
+    return 0.5, {"error": "dag_evaluation_failed"}
 
 
 # -----------------------------------------------------------------------------
@@ -179,9 +198,21 @@ def run_dag_builder_agent(
             span.input = {"user_msg": user_msg[:500]}  # Limit input size
             span.output = {"raw_output": raw_output[:500]}  # Limit output size
 
+        def _parse_dag(raw_text: str) -> Dict[str, Any]:
+            cleaned = raw_text.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.splitlines()
+                if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+                    cleaned = "\n".join(lines[1:-1]).strip()
+            if "{" in cleaned and "}" in cleaned:
+                cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
+            return json.loads(cleaned)
+
         try:
-            parsed = json.loads(raw_output)
+            parsed = _parse_dag(raw_output)
         except Exception:
+            print("DAG_BUILDER_JSON_PARSE_ERROR")
+            print(raw_output[:2000])
             parsed = {
                 "summary": "",
                 "nodes": [],

@@ -162,7 +162,7 @@ def run_research_agent(
         search_results = []
         for query in search_queries:
             results = google_web_search(query)
-            search_results.extend(results.get("results", []))
+            search_results.extend(results.get("organic_results", results.get("results", [])))
 
         # Filter and get top URLs
         urls_to_fetch = []
@@ -203,25 +203,68 @@ Research Content:
 Derive competencies as described, primarily using the provided Research Content.
 """
 
-        with start_as_current_span(
-            name="call_gemini",
-            type="llm",
-            metadata={"model": "gemini"}
-        ) as span:
-            raw_output = call_gemini(
-                system_instruction=system_prompt,
-                user_message=user_msg,
-            )
-            span.input = {"user_msg": user_msg[:500]}  # Limit input size
-            span.output = {"raw_output": raw_output[:500]}  # Limit output size
+        def _parse_research(raw_text: str) -> Dict[str, Any]:
+            cleaned = raw_text.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.splitlines()
+                if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+                    cleaned = "\n".join(lines[1:-1]).strip()
+            # Best-effort JSON extraction if extra text is present
+            if "{" in cleaned and "}" in cleaned:
+                cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
+            return json.loads(cleaned)
 
-        try:
-            parsed = json.loads(raw_output)
-        except Exception:
+        raw_output = ""
+        parsed = None
+        for attempt in range(2):
+            with start_as_current_span(
+                name="call_gemini",
+                type="llm",
+                metadata={"model": "gemini", "attempt": attempt + 1}
+            ) as span:
+                raw_output = call_gemini(
+                    system_instruction=system_prompt,
+                    user_message=user_msg,
+                )
+                span.input = {"user_msg": user_msg[:500]}  # Limit input size
+                span.output = {"raw_output": raw_output[:500]}  # Limit output size
+
+            try:
+                parsed = _parse_research(raw_output)
+                break
+            except Exception:
+                print("RESEARCH_AGENT_JSON_PARSE_ERROR")
+                print(raw_output[:2000])
+                parsed = {
+                    "normalized_goal": goal_title,
+                    "competencies": [],
+                    "error": "invalid_json_from_model",
+                }
+
+        if parsed is None:
             parsed = {
                 "normalized_goal": goal_title,
                 "competencies": [],
                 "error": "invalid_json_from_model",
+            }
+
+        # Fallback: ensure we always return a minimum competency list
+        if not parsed.get("competencies"):
+            parsed = {
+                "normalized_goal": goal_title,
+                "competencies": [
+                    {
+                        "id": "c1",
+                        "name": "Foundational knowledge for the goal",
+                        "description": "Build the core concepts and vocabulary needed to start working in this domain. Focus on the basic tools, terminology, and mental models so later skills have a stable base.",
+                        "type": "conceptual",
+                        "example_tasks": [
+                            "Summarize the most important concepts and terminology for the goal.",
+                            "Explain how a beginner would approach a simple task in this domain."
+                        ],
+                    }
+                ],
+                "error": parsed.get("error"),
             }
 
         # ---- Evaluation hook --------------------------------------------------
@@ -237,6 +280,7 @@ Derive competencies as described, primarily using the provided Research Content.
             "eval_overall_score": score,
             "eval_dimension_scores": details.get("dimension_scores"),
             "eval_failed": "error" in details,
+            "used_fallback_competencies": len(parsed.get("competencies", [])) == 1 and parsed.get("competencies", [])[0].get("id") == "c1",
         }
 
         return {"competencies": parsed, "research_context": fetched_content}

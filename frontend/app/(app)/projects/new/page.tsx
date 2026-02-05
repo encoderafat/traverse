@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPath } from "@/lib/paths";
+import { supabase } from "@/lib/supabase";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function NewProjectPage() {
   const [experienceLevel, setExperienceLevel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
 
   const totalSteps = 4;
 
@@ -57,6 +60,8 @@ export default function NewProjectPage() {
     }
     setError(null);
     setIsSubmitting(true);
+    setProgressMessage("Starting...");
+    setProgressPercent(5);
 
     try {
       const backgroundParts = [
@@ -64,19 +69,85 @@ export default function NewProjectPage() {
         learningStyle ? `Learning style: ${learningStyle}.` : null,
         timePerWeek ? `Time per week: ${timePerWeek}.` : null,
       ].filter(Boolean);
-
-      const newPath = await createPath({
+      const payload = {
         goal_title: `Learning Path for ${targetRole}`,
         goal_description: `${goalDescription} Goal: become a ${targetRole}.`,
         domain_hint: targetRole,
         level: experienceLevel,
         user_background: backgroundParts.join(" "),
-      });
-      router.push(`/projects/${newPath.id}`);
+      };
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/paths/stream`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok || !res.body) {
+        const text = await res.text();
+        throw new Error(text || "Failed to create learning path.");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const chunk of parts) {
+          const lines = chunk.split("\n");
+          const eventLine = lines.find((l) => l.startsWith("event:"));
+          const dataLine = lines.find((l) => l.startsWith("data:"));
+          const event = eventLine ? eventLine.replace("event:", "").trim() : "message";
+          const dataText = dataLine ? dataLine.replace("data:", "").trim() : "{}";
+          let data: any = {};
+          try {
+            data = JSON.parse(dataText);
+          } catch {
+            data = { message: dataText };
+          }
+
+          if (event === "progress") {
+            if (typeof data.percent === "number") setProgressPercent(data.percent);
+            if (data.message) setProgressMessage(data.message);
+          } else if (event === "done") {
+            setProgressPercent(100);
+            setProgressMessage("Done.");
+            router.push(`/projects/${data.path_id}`);
+            return;
+          } else if (event === "error") {
+            setError(data.message || "Failed to create learning path.");
+            setIsSubmitting(false);
+            setProgressMessage(null);
+            return;
+          }
+        }
+      }
     } catch (err: any) {
       console.error("Failed to create path:", err);
       setError(err.message || "Failed to create learning path. Please try again.");
       setIsSubmitting(false);
+      setProgressMessage(null);
     }
   };
 
@@ -90,6 +161,21 @@ export default function NewProjectPage() {
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline"> {error}</span>
+        </div>
+      )}
+
+      {isSubmitting && progressMessage && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{progressMessage}</span>
+            <span className="text-sm">{progressPercent}%</span>
+          </div>
+          <div className="w-full h-2 bg-blue-100 rounded mt-2">
+            <div
+              className="h-2 rounded bg-blue-500 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
       )}
 
