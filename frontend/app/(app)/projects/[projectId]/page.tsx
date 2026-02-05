@@ -5,6 +5,7 @@ import { useSearchParams, useParams, useRouter } from 'next/navigation';
 import { fetchProject, fetchPathProgress, PathProgress, updateNodeStatus } from "@/lib/paths";
 import DagView from "@/components/dag/DagView";
 import NodeDetailsPanel from "@/components/dag/NodeDetailsPanel";
+import FullPathPanel from "@/components/dag/FullPathPanel";
 import Notification from "@/components/ui/Notification";
 import { Node, Edge } from "reactflow";
 
@@ -70,6 +71,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<PathProgress | null>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [activeTab, setActiveTab] = useState<"details" | "full">("details");
 
   // Notification State
   const [showNotification, setShowNotification] = useState(false);
@@ -151,6 +153,7 @@ export default function ProjectDetailPage() {
 
   const handleNodeClick = (_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
+    setActiveTab("details");
   };
 
   if (loading) return <div className="p-6 text-center">Loading learning path…</div>;
@@ -186,10 +189,54 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      <DagView initialNodes={layoutedNodes} initialEdges={layoutedEdges} onNodeClick={handleNodeClick} />
+      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
+        <div className="bg-white rounded-lg shadow-lg border border-border p-4">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Learning Graph</h2>
+            <p className="text-sm text-muted">Click a node to view details or start a challenge.</p>
+          </div>
+          <DagView initialNodes={layoutedNodes} initialEdges={layoutedEdges} onNodeClick={handleNodeClick} />
+        </div>
 
-      <div className="mt-8">
-        <NodeDetailsPanel node={selectedNode} projectId={projectId as string} currentNodeCount={project.nodes.length} onUpdateNodeStatus={handleUpdateNodeStatus} />
+        <div className="bg-white rounded-lg shadow-lg border border-border p-4">
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab("details")}
+              className={`px-4 py-2 rounded text-sm font-semibold transition ${
+                activeTab === "details"
+                  ? "bg-accent text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Details
+            </button>
+            <button
+              onClick={() => setActiveTab("full")}
+              className={`px-4 py-2 rounded text-sm font-semibold transition ${
+                activeTab === "full"
+                  ? "bg-accent text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Full Path
+            </button>
+          </div>
+
+          {activeTab === "details" ? (
+            <NodeDetailsPanel
+              node={selectedNode}
+              projectId={projectId as string}
+              currentNodeCount={project.nodes.length}
+              onUpdateNodeStatus={handleUpdateNodeStatus}
+            />
+          ) : (
+            <FullPathPanel
+              nodes={project.nodes}
+              edges={project.edges}
+              progress={progress}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

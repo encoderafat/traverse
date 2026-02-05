@@ -17,8 +17,8 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ node, projectId, cu
 
   if (!node) {
     return (
-      <div className="p-8 bg-white rounded-lg shadow-lg border border-border">
-        <h3 className="text-xl font-bold text-gray-900">Select a Node</h3>
+      <div className="p-6 bg-slate-50 rounded-lg border border-border">
+        <h3 className="text-xl font-semibold text-gray-900">Select a Node</h3>
         <p className="text-muted mt-2">Click on a node in the graph to see its details.</p>
       </div>
     );
@@ -39,9 +39,9 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ node, projectId, cu
   const isCompleted = node.data.status === 'completed';
 
   return (
-    <div className="p-8 bg-white rounded-lg shadow-lg border border-border">
+    <div className="p-6 bg-white rounded-lg border border-border">
       <div className="flex justify-between items-start">
-        <h3 className="text-2xl font-bold text-gray-900 mb-4">{node.data.label}</h3>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-4">{node.data.label}</h3>
         <div className="relative">
           <button 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -85,12 +85,12 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ node, projectId, cu
       <div className="space-y-4">
         <div>
           <h4 className="font-semibold text-gray-700">Description</h4>
-          <p className="text-muted">{node.data.description || 'No description available.'}</p>
+          <p className="text-gray-700 leading-relaxed">{node.data.description || 'No description available.'}</p>
         </div>
         
         <div>
           <h4 className="font-semibold text-gray-700">Estimated Time</h4>
-          <p className="text-muted">{node.data.estimated_minutes ? `${node.data.estimated_minutes} minutes` : 'Not specified.'}</p>
+          <p className="text-gray-600">{node.data.estimated_minutes ? `${node.data.estimated_minutes} minutes` : 'Not specified.'}</p>
         </div>
 
         <div>
