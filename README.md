@@ -2,6 +2,8 @@
 
 Traverse is an AI agent system that reverse-engineers expertise into personalized learning DAGs. It researches real-world signals, builds a dependency graph, and generates realistic challenges that adapt as you learn.
 
+![Traverse Logo](frontend/public/traverse.png)
+
 ## Features
 - Research agent that extracts competencies from real-world sources
 - DAG builder that sequences skills with prerequisites
@@ -13,6 +15,40 @@ Traverse is an AI agent system that reverse-engineers expertise into personalize
 
 ## Deployment
 App is online at [text](https://traverse-six.vercel.app/)
+Pitch Deck at [text](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
+One Liner : Traverse is an AI agent system that reverse-engineers expertise to build personalized learning paths.
+
+## AI Agent System
+Traverse is built as a set of focused agents with clear inputs/outputs. Together they form a feedback loop that adapts the learning path based on real performance.
+
+```
+Research Agent -> DAG Builder -> Challenge Agent -> Tutor Agent
+                                      ^               |
+                                      |               v
+                                Remedial Node <---- Struggle Detection
+```
+
+### Agents and Responsibilities
+- Research Agent: extracts competencies from real-world sources (jobs, blogs, repos).
+- DAG Builder: converts competencies into a prerequisite graph (acyclic DAG).
+- Challenge Agent: generates proof-of-competency challenges grounded in research.
+- Tutor Agent: evaluates answers with a rubric and decides pass/retry + remediation.
+- Remedial Node Agent: inserts a new prerequisite node when a learner is blocked.
+
+### Adaptive Feedback Loop
+When a learner fails a node multiple times, the tutor agent proposes a remedial topic.
+The system inserts a new prerequisite node and rewires the DAG so the learner can
+close the gap before retrying the original node.
+
+### Agent Guardrails
+- JSON schema enforcement with retry on malformed model output
+- DAG validation to guarantee acyclicity and valid edges
+- LLM-as-judge evaluation hooks (OPIK) for research, DAG, challenge, and tutor quality
+
+### Where to Look in Code
+- Agents: `backend/agents/`
+- Agent orchestration: `backend/routes/paths.py`, `backend/routes/challenges.py`
+- Evaluations/observability: `backend/services/opik_client.py`
 
 ## Architecture
 - Backend: FastAPI API + multi-agent pipeline + SQLAlchemy models
