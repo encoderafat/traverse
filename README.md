@@ -11,12 +11,8 @@ Traverse is an AI agent system that reverse-engineers expertise into personalize
 - OPIK tracing + LLM-as-judge evaluation hooks
 - Interactive DAG visualization in the frontend
 
-## Screenshot
-Place a screenshot at `docs/screenshot.png` and update this section:
-
-```
-![Traverse UI](docs/screenshot.png)
-```
+## Deployment
+App is online at [text](https://traverse-six.vercel.app/)
 
 ## Architecture
 - Backend: FastAPI API + multi-agent pipeline + SQLAlchemy models

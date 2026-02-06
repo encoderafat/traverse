@@ -171,21 +171,40 @@ Research Content to base the challenge on:
 Create ONE challenge as described in the system prompt, based on the provided research content.
 """
 
-        with start_as_current_span(
-            name="call_gemini",
-            type="llm",
-            metadata={"model": "gemini"}
-        ) as span:
-            raw_output = call_gemini(
-                system_instruction=system_prompt,
-                user_message=user_msg,
-            )
-            span.input = {"user_msg": user_msg[:500]}  # Limit input size
-            span.output = {"raw_output": raw_output[:500]}  # Limit output size
+        def _parse_challenge(raw_text: str) -> Dict[str, Any]:
+            cleaned = raw_text.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.splitlines()
+                if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+                    cleaned = "\n".join(lines[1:-1]).strip()
+            if "{" in cleaned and "}" in cleaned:
+                cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
+            return json.loads(cleaned)
 
-        try:
-            parsed = json.loads(raw_output)
-        except Exception:
+        parsed = None
+        raw_output = ""
+        for attempt in range(2):
+            with start_as_current_span(
+                name="call_gemini",
+                type="llm",
+                metadata={"model": "gemini", "attempt": attempt + 1}
+            ) as span:
+                raw_output = call_gemini(
+                    system_instruction=system_prompt,
+                    user_message=user_msg,
+                )
+                span.input = {"user_msg": user_msg[:500]}  # Limit input size
+                span.output = {"raw_output": raw_output[:500]}  # Limit output size
+
+            try:
+                parsed = _parse_challenge(raw_output)
+            except Exception:
+                parsed = None
+
+            if parsed and parsed.get("prompt"):
+                break
+
+        if not parsed or not parsed.get("prompt"):
             parsed = {
                 "error": "invalid_json_from_model",
                 "challenge_type": None,

@@ -94,6 +94,12 @@ def create_or_get_challenge(
         raise HTTPException(status_code=503, detail=detail) from exc
 
     # 4. Save the new challenge to DB
+    if not challenge_data.get("prompt"):
+        raise HTTPException(
+            status_code=503,
+            detail="Challenge generation failed. Please try again.",
+        )
+
     expected_outline = challenge_data.get("expected_answer_outline")
     if isinstance(expected_outline, list):
         expected_outline = "\n".join(expected_outline)
