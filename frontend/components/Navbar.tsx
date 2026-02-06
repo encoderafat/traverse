@@ -14,7 +14,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 border-b border-border bg-surface backdrop-blur">
       <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
         <Link href="/projects" className="flex items-center gap-3 text-xl font-semibold heading-font text-primary">
-          <Image src="/traverse.png" alt="Traverse logo" width={28} height={28} />
+          <Image src="/traverse.png" alt="Traverse logo" width={34} height={34} />
           <span>Traverse</span>
         </Link>
 
