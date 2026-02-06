@@ -7,10 +7,16 @@ import DagView from "@/components/dag/DagView";
 import NodeDetailsPanel from "@/components/dag/NodeDetailsPanel";
 import FullPathPanel from "@/components/dag/FullPathPanel";
 import Notification from "@/components/ui/Notification";
-import { Node, Edge } from "reactflow";
+import { Node, Edge, MarkerType } from "reactflow";
 
 // Helper function to perform a simple layout
-const getLayoutedElements = (nodes: any[], edges: any[], progress: PathProgress | null) => {
+const getLayoutedElements = (
+  nodes: any[],
+  edges: any[],
+  progress: PathProgress | null,
+  onStartChallenge: (nodeId: string) => void,
+  onMarkComplete: (nodeId: string, status: 'completed') => void
+) => {
   const isNodeLocked = (nodeId: number, progressMap: any, allEdges: any[]): boolean => {
     const prereqs = allEdges
       .filter((e) => e.to_node_id === nodeId)
@@ -29,12 +35,9 @@ const getLayoutedElements = (nodes: any[], edges: any[], progress: PathProgress 
     const locked = isNodeLocked(node.id, progressMap, edges);
     const status = locked ? 'blocked' : (nodeProgress?.status || 'not_started');
 
-    let backgroundColor = '#A0AEC0'; // gray-500 for blocked/not_started
-    if (status === 'completed') backgroundColor = '#48BB78'; // green-500
-    if (status === 'in_progress') backgroundColor = '#4299E1'; // blue-500
-
     return {
       id: node.id.toString(),
+      type: "dagNode",
       data: {
         label: node.title,
         description: node.description,
@@ -43,24 +46,32 @@ const getLayoutedElements = (nodes: any[], edges: any[], progress: PathProgress 
        },
       position: { x: (i % 4) * 250, y: Math.floor(i / 4) * 150 },
       style: {
-        background: backgroundColor,
-        color: 'white',
-        border: '1px solid #1a202c',
-        borderRadius: '8px',
-        width: 180,
-        padding: '10px',
+        background: 'transparent',
+        border: 'none',
       },
       draggable: false, // For a cleaner UI
     };
   });
 
-  const layoutedEdges: Edge[] = edges.map((edge) => ({
-    id: `e${edge.from_node_id}-${edge.to_node_id}`,
-    source: edge.from_node_id.toString(),
-    target: edge.to_node_id.toString(),
-    animated: true,
-    style: { stroke: 'var(--accent)' }
-  }));
+  const layoutedEdges: Edge[] = edges.map((edge) => {
+    const targetLocked = isNodeLocked(edge.to_node_id, progressMap, edges);
+    const strokeColor = targetLocked ? '#94A3B8' : 'var(--accent)';
+    return {
+      id: `e${edge.from_node_id}-${edge.to_node_id}`,
+      source: edge.from_node_id.toString(),
+      target: edge.to_node_id.toString(),
+      animated: !targetLocked,
+      style: {
+        stroke: strokeColor,
+        strokeWidth: 2,
+        strokeDasharray: targetLocked ? '6 4' : undefined,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: strokeColor,
+      },
+    };
+  });
 
   return { layoutedNodes, layoutedEdges };
 };
@@ -118,12 +129,6 @@ export default function ProjectDetailPage() {
       .finally(() => setLoading(false));
   }, [projectId, searchParams]);
 
-  const { layoutedNodes, layoutedEdges } = useMemo(() => {
-    if (!project) return { layoutedNodes: [], layoutedEdges: [] };
-    return getLayoutedElements(project.nodes, project.edges, progress);
-  }, [project, progress]);
-
-
   const handleUpdateNodeStatus = async (nodeId: string, status: 'completed') => {
     if (!projectId) return;
 
@@ -156,8 +161,25 @@ export default function ProjectDetailPage() {
     setActiveTab("details");
   };
 
-  if (loading) return <div className="p-6 text-center">Loading learning path…</div>;
-  if (!project) return <div className="p-6 text-center">Learning path not found.</div>;
+  const handleStartChallenge = (nodeId: string) => {
+    if (!projectId) return;
+    sessionStorage.setItem(`nodeCount_${projectId}`, project.nodes.length.toString());
+    router.push(`/projects/${projectId}/challenge/${nodeId}`);
+  };
+
+  const { layoutedNodes, layoutedEdges } = useMemo(() => {
+    if (!project) return { layoutedNodes: [], layoutedEdges: [] };
+    return getLayoutedElements(
+      project.nodes,
+      project.edges,
+      progress,
+      handleStartChallenge,
+      handleUpdateNodeStatus
+    );
+  }, [project, progress, handleStartChallenge, handleUpdateNodeStatus]);
+
+  if (loading) return <div className="p-6 text-center text-muted">Loading learning path…</div>;
+  if (!project) return <div className="p-6 text-center text-muted">Learning path not found.</div>;
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -168,7 +190,7 @@ export default function ProjectDetailPage() {
           onClose={() => setShowNotification(false)}
         />
       )}
-      <h1 className="text-3xl font-bold">{project.goal_title}</h1>
+      <h1 className="text-4xl font-semibold heading-font text-primary">{project.goal_title}</h1>
       <p className="text-muted mt-2 mb-6">{project.summary}</p>
 
       {progress && (
@@ -177,9 +199,9 @@ export default function ProjectDetailPage() {
             <span className="font-semibold">Overall Progress</span>
             <span className="font-semibold">{Math.round(progress.completion_ratio * 100)}%</span>
           </div>
-          <div className="w-full h-3 bg-gray-200 rounded">
+          <div className="w-full h-3 bg-surface-alt rounded-full border border-border">
             <div
-              className="h-3 rounded"
+              className="h-3 rounded-full"
               style={{
                 width: `${progress.completion_ratio * 100}%`,
                 backgroundColor: 'var(--accent)',
@@ -190,22 +212,28 @@ export default function ProjectDetailPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
-        <div className="bg-white rounded-lg shadow-lg border border-border p-4">
+        <div className="card p-4">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Learning Graph</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Learning Graph</h2>
             <p className="text-sm text-muted">Click a node to view details or start a challenge.</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="pill bg-green-100 text-green-700">completed</span>
+              <span className="pill bg-sky-100 text-sky-700">in progress</span>
+              <span className="pill bg-sky-50 text-sky-700">ready</span>
+              <span className="pill bg-slate-200 text-slate-700">blocked</span>
+            </div>
           </div>
           <DagView initialNodes={layoutedNodes} initialEdges={layoutedEdges} onNodeClick={handleNodeClick} />
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg border border-border p-4">
+        <div className="card p-4">
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setActiveTab("details")}
               className={`px-4 py-2 rounded text-sm font-semibold transition ${
                 activeTab === "details"
                   ? "bg-accent text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-surface-alt text-slate-700 hover:bg-slate-200"
               }`}
             >
               Details
@@ -215,7 +243,7 @@ export default function ProjectDetailPage() {
               className={`px-4 py-2 rounded text-sm font-semibold transition ${
                 activeTab === "full"
                   ? "bg-accent text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-surface-alt text-slate-700 hover:bg-slate-200"
               }`}
             >
               Full Path

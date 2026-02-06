@@ -11,28 +11,24 @@ interface NotificationProps {
 
 const notificationStyles = {
   success: {
-    bg: 'bg-green-100',
-    border: 'border-green-400',
+    bg: 'bg-green-50',
+    border: 'border-green-300',
     text: 'text-green-700',
-    icon: '✅',
   },
   info: {
-    bg: 'bg-blue-100',
-    border: 'border-blue-400',
-    text: 'text-blue-700',
-    icon: 'ℹ️',
+    bg: 'bg-sky-50',
+    border: 'border-sky-300',
+    text: 'text-sky-700',
   },
   warning: {
-    bg: 'bg-yellow-100',
-    border: 'border-yellow-400',
-    text: 'text-yellow-700',
-    icon: '⚠️',
+    bg: 'bg-amber-50',
+    border: 'border-amber-300',
+    text: 'text-amber-700',
   },
   error: {
-    bg: 'bg-red-100',
-    border: 'border-red-400',
+    bg: 'bg-red-50',
+    border: 'border-red-300',
     text: 'text-red-700',
-    icon: '❌',
   },
 };
 
@@ -51,15 +47,13 @@ const Notification: React.FC<NotificationProps> = ({ message, type, duration = 5
 
   return (
     <div 
-      className={`fixed top-20 right-5 max-w-sm w-full ${styles.bg} border-l-4 ${styles.border} ${styles.text} p-4 rounded-lg shadow-lg z-50`} 
+      className={`fixed top-20 right-5 max-w-sm w-full ${styles.bg} border ${styles.border} ${styles.text} p-4 rounded-xl shadow-lg z-50`} 
       role="alert"
     >
-      <div className="flex">
-        <div className="py-1">
-          <span className="text-2xl">{styles.icon}</span>
-        </div>
-        <div className="ml-3">
-          <p className="font-bold">{message}</p>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-2 w-2 rounded-full bg-current opacity-70" />
+        <div>
+          <p className="font-semibold">{message}</p>
         </div>
         <button onClick={onClose} className="ml-auto -mx-1.5 -my-1.5 bg-transparent rounded-lg focus:ring-2 focus:ring-gray-400 p-1.5 inline-flex h-8 w-8">
           <span className="sr-only">Close</span>

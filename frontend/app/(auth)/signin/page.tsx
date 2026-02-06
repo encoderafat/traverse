@@ -14,25 +14,25 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-6">
-      <div className="w-full max-w-sm border border-gray-200 rounded-lg p-6">
-        <h1 className="text-xl font-semibold mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-surface-alt px-6">
+      <div className="w-full max-w-sm card p-8">
+        <h1 className="text-2xl font-semibold heading-font text-primary mb-2">
           Sign in to Traverse
         </h1>
 
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted mb-6">
           Continue to your learning projects
         </p>
 
         <button
-          className="w-full rounded-md bg-black text-white py-2 text-sm hover:bg-gray-900"
+          className="w-full btn-primary text-sm"
           onClick={handleSignIn}
         >
           Sign in with GitHub
         </button>
 
         <button
-          className="w-full mt-3 rounded-md border border-gray-300 bg-white text-gray-900 py-2 text-sm hover:bg-gray-50"
+          className="w-full mt-3 btn-secondary text-sm"
           onClick={handleGoogleSignIn}
         >
           Sign in with Google

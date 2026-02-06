@@ -1,8 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 html, body {
-  background-color: #ffffff;
-  color: #111111;
+  background-color: #EEF2F7;
+  color: #0F172A;
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
 }
 
 a {
@@ -16,9 +18,17 @@ a {
 
 
 :root {
-  --accent: #E6007A;
-  --border: #E5E7EB;
-  --muted: #6B7280;
+  --primary: #1B3A57;
+  --primary-strong: #132B40;
+  --accent: #1EA5A0;
+  --accent-strong: #178681;
+  --surface: #FFFFFF;
+  --surface-alt: #F1F4F8;
+  --border: #E2E8F0;
+  --muted: #64748B;
+  --success: #16A34A;
+  --warning: #D97706;
+  --danger: #DC2626;
 }
 
 .bg-accent {
@@ -31,4 +41,91 @@ a {
 
 .border-border {
   border-color: var(--border);
+}
+
+.bg-surface {
+  background-color: var(--surface);
+}
+
+.bg-surface-alt {
+  background-color: var(--surface-alt);
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.heading-font {
+  font-family: "Fraunces", "IBM Plex Sans", serif;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-strong);
+}
+
+.btn-secondary {
+  background-color: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--primary);
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.btn-ghost:hover {
+  background-color: rgba(27, 58, 87, 0.08);
+}
+
+.input-field {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  color: #0F172A;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(30, 165, 160, 0.15);
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }

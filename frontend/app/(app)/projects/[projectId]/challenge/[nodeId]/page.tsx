@@ -95,10 +95,10 @@ export default function ChallengePage() {
   if (!challenge) {
     return (
       <div className="text-center p-8">
-        <h2 className="text-2xl font-bold text-red-600">Failed to Load Challenge</h2>
+        <h2 className="text-2xl font-semibold text-red-600">Failed to Load Challenge</h2>
         <p className="text-muted mt-2">There was an error fetching the challenge. Please try again.</p>
-        <Link href={`/projects/${projectId}`} className="mt-4 inline-block bg-accent text-white font-bold py-2 px-4 rounded">
-            Go Back to Project
+        <Link href={`/projects/${projectId}`} className="mt-4 inline-block btn-secondary">
+          Go Back to Project
         </Link>
       </div>
     );
@@ -106,14 +106,14 @@ export default function ChallengePage() {
 
   return (
     <div className="max-w-3xl mx-auto p-8">
-        <div className="p-8 bg-white rounded-lg shadow-lg border border-border">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="card p-8">
+          <h1 className="text-3xl font-semibold heading-font text-primary mb-2">
             Challenge
           </h1>
           <p className="text-muted mb-6">Prove your understanding to complete this node.</p>
 
-          <div className="mb-6 bg-gray-50 p-4 rounded-md border">
-            <p className="whitespace-pre-wrap text-gray-800">
+          <div className="mb-6 bg-surface-alt p-4 rounded-xl border border-border">
+            <p className="whitespace-pre-wrap text-slate-800">
                 {challenge.prompt}
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function ChallengePage() {
                 <textarea
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    className="w-full border rounded p-3 mb-4 focus:outline-none focus:shadow-outline focus:border-accent"
+                    className="w-full input-field mb-4"
                     rows={8}
                     placeholder="Write your answer here…"
                     disabled={busy}
@@ -133,7 +133,7 @@ export default function ChallengePage() {
                     <button
                         onClick={handleGetHint}
                         disabled={isRequestingHint || busy}
-                        className={`w-full md:w-auto bg-blue-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out hover:bg-blue-600 ${isRequestingHint || busy ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full md:w-auto btn-secondary ${isRequestingHint || busy ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {isRequestingHint ? "Thinking..." : "Get a Hint"}
                     </button>
@@ -142,7 +142,7 @@ export default function ChallengePage() {
               <button
                 onClick={submitAnswer}
                 disabled={busy || !answer}
-                className={`w-full mt-4 bg-accent text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out hover:bg-pink-700 ${busy || !answer ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full mt-4 btn-primary ${busy || !answer ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {busy ? "Submitting…" : "Submit Answer"}
               </button>
@@ -155,7 +155,7 @@ export default function ChallengePage() {
 
           {tutorResult && (
             <div className="mt-4">
-              <h2 className="text-2xl font-semibold">Feedback</h2>
+              <h2 className="text-2xl font-semibold heading-font text-primary">Feedback</h2>
               <p className="font-medium text-lg mt-2">
                 Score: {Math.round(tutorResult.score * 100)}%
               </p>
@@ -166,7 +166,7 @@ export default function ChallengePage() {
                   : "Not quite. You should review the feedback and try again."}
               </p>
 
-              <p className="mt-4 text-gray-700 bg-gray-50 p-4 rounded border">
+              <p className="mt-4 text-slate-700 bg-surface-alt p-4 rounded-xl border border-border">
                 {tutorResult.feedback_summary}
               </p>
 
@@ -190,14 +190,14 @@ export default function ChallengePage() {
                         setHints([]); // Also reset hints on retry
                         setHintLevel(0);
                     }}
-                    className="flex-1 bg-accent hover:bg-pink-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out"
+                    className="flex-1 btn-primary"
                     >
                     Retry Challenge
                     </button>
                 )}
                 <Link
                   href={`/projects/${projectId}${tutorResult.remedial_added ? "?refreshed=true" : ""}`}
-                  className="flex-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 ease-in-out"
+                  className="flex-1 text-center btn-secondary"
                 >
                     Back to Learning Path
                 </Link>

@@ -137,7 +137,7 @@ def _ensure_sink_connectivity(dag: dict) -> dict:
     id_to_index = {nid: idx for idx, nid in enumerate(node_ids)}
 
     for nid, degree in out_degree.items():
-        if degree == 0 and (nid, sink_id) not in existing_edges:
+        if degree == 0:
             idx = id_to_index.get(nid)
             if idx is None:
                 continue
@@ -302,6 +302,17 @@ def create_path_stream(
             dag = _ensure_sink_connectivity(dag)
 
             validation_errors = _validate_dag(dag)
+            if validation_errors:
+                # Retry once to reduce user-facing failures from occasional LLM hiccups.
+                dag = run_dag_builder_agent(
+                    user_id=user_id,
+                    goal_title=payload.goal_title,
+                    competencies=research_competencies,
+                    user_background=payload.user_background,
+                )
+                dag = _ensure_sink_connectivity(dag)
+                validation_errors = _validate_dag(dag)
+
             if validation_errors:
                 yield sse("error", {
                     "message": "We couldn't generate a valid learning graph. Please try again.",

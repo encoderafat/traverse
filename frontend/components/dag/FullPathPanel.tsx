@@ -25,8 +25,8 @@ interface FullPathPanelProps {
 
 const statusStyles: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  blocked: "bg-gray-200 text-gray-700",
+  in_progress: "bg-sky-100 text-sky-700",
+  blocked: "bg-slate-200 text-slate-700",
   not_started: "bg-slate-100 text-slate-700",
 };
 
@@ -71,7 +71,7 @@ const FullPathPanel: React.FC<FullPathPanelProps> = ({ nodes, edges, progress })
   return (
     <div>
       <div className="mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">Full Learning Path</h3>
+        <h3 className="text-lg font-semibold heading-font text-primary">Full Learning Path</h3>
         <p className="text-sm text-muted">
           Read the full curriculum in order. Status updates based on your progress.
         </p>
@@ -85,25 +85,25 @@ const FullPathPanel: React.FC<FullPathPanelProps> = ({ nodes, edges, progress })
           return (
             <div
               key={node.id}
-              className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition"
+              className="card p-4 hover:shadow-xl transition"
             >
               <div className="flex items-center justify-between gap-3">
-                <h4 className="text-base font-semibold text-gray-900">{node.title}</h4>
+                <h4 className="text-base font-semibold text-slate-900">{node.title}</h4>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${typeClass}`}>
+                  <span className={`pill ${typeClass}`}>
                     {node.node_type}
                   </span>
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${statusClass}`}>
+                  <span className={`pill ${statusClass}`}>
                     {status.replace("_", " ")}
                   </span>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+              <p className="text-sm text-slate-700 mt-2 leading-relaxed">
                 {node.description}
               </p>
 
-              <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+              <div className="mt-3 flex items-center gap-3 text-xs text-muted">
                 <span>
                   Est. {node.estimated_minutes ? `${node.estimated_minutes} min` : "time TBD"}
                 </span>

@@ -15,9 +15,9 @@ export default function AppLayout({
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-alt">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         {children}
       </main>
     </div>

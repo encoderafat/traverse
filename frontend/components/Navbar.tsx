@@ -10,24 +10,24 @@ export default function Navbar() {
   if (loading) return null;
 
   return (
-    <header className="border-b border-gray-200">
-      <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
-        <Link href="/projects" className="text-lg font-semibold">
+    <header className="sticky top-0 z-40 border-b border-border bg-surface backdrop-blur">
+      <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
+        <Link href="/projects" className="text-xl font-semibold heading-font text-primary">
           Traverse
         </Link>
 
         {session && (
-          <nav className="flex items-center gap-6 text-sm">
+          <nav className="flex items-center gap-4 text-sm">
             <Link
               href="/projects"
-              className="text-gray-700 hover:text-black"
+              className="text-slate-600 hover:text-primary transition"
             >
               Projects
             </Link>
 
             <button
               onClick={signOut}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-100"
+              className="btn-secondary text-sm"
             >
               Sign out
             </button>
