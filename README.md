@@ -16,7 +16,7 @@ Traverse is an AI agent system that reverse-engineers expertise into personalize
 ## Deployment
 App is online at [https://traverse-six.vercel.app/](https://traverse-six.vercel.app/)
 
-Pitch Deck at [tGoogle Slidest](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
+Pitch Deck at [Google Slides](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
 
 Video demo : [YouTube](https://youtu.be/ajCN6gpiwUQ)
 
@@ -151,9 +151,9 @@ OPIK traces are emitted from all agents with prompt versions and key metadata (u
 Disable locally by setting `OPIK_TRACK_DISABLE=true`.
 
 ## Roadmap
-- Improve interview flow with dynamic follow-ups
-- Add richer research grounding and source filtering
-- Expand analytics and A/B experimentation
+- Resource-backed learning nodes with recency and credibility scoring (requires content pipeline, ranking, and link health validation beyond hackathon scope).
+- Personalized content + pacing engine based on user profile and feedback loops (needs longitudinal testing to avoid brittle recommendations).
+- Expert/community-curated learning packs with governance and moderation workflows (requires quality controls and review processes).
 
 
 ## License
