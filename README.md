@@ -99,6 +99,8 @@ Required:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
+Check env.example file
+
 Optional:
 - `OPIK_TRACK_DISABLE` (set to `true` to disable tracing)
 
@@ -107,6 +109,9 @@ Required:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_API_URL`
+
+Check env.example file
+
 
 ## Running Tests
 ```
