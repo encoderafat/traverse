@@ -16,6 +16,7 @@ Traverse is an AI agent system that reverse-engineers expertise into personalize
 ## Deployment
 App is online at [text](https://traverse-six.vercel.app/)
 Pitch Deck at [text](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
+Video demo : [text](https://youtu.be/ajCN6gpiwUQ)
 One Liner : Traverse is an AI agent system that reverse-engineers expertise to build personalized learning paths.
 
 ## AI Agent System
@@ -127,7 +128,24 @@ E2E tests are skipped unless `RUN_E2E_TESTS=true` is set.
 - Ensure the backend URL is configured in `NEXT_PUBLIC_API_URL`
 
 ## Observability (OPIK)
-OPIK traces are emitted from all agents with prompt versions, A/B variants, and LLM-as-judge evaluation scores. Traces include key metadata (user/path/node context, counts, and parse errors). Disable locally by setting `OPIK_TRACK_DISABLE=true`.
+OPIK traces are emitted from all agents with prompt versions and key metadata (user/path/node context, counts, and parse errors). Each stage is evaluated with LLM-as-judge scores so quality can be tracked over time.
+
+### What Gets Traced
+- Research, DAG, challenge, and tutor agent runs
+- Prompt version + experiment variant
+- Input/output summaries (token-safe previews)
+- Parsing failures and fallback usage
+
+### Evaluation Strategy
+- LLM-as-judge scoring for research quality, DAG structure, challenge realism, and tutor feedback
+- Scores logged per run to support regression tracking and prompt iteration
+
+### A/B Testing
+- Deterministic variant assignment per user
+- Prompt variants tracked in Opik for comparison
+- Supports continuous prompt optimization
+
+Disable locally by setting `OPIK_TRACK_DISABLE=true`.
 
 ## Roadmap
 - Improve interview flow with dynamic follow-ups
