@@ -14,9 +14,12 @@ Traverse is an AI agent system that reverse-engineers expertise into personalize
 - Interactive DAG visualization in the frontend
 
 ## Deployment
-App is online at [text](https://traverse-six.vercel.app/)
-Pitch Deck at [text](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
-Video demo : [text](https://youtu.be/ajCN6gpiwUQ)
+App is online at [https://traverse-six.vercel.app/](https://traverse-six.vercel.app/)
+
+Pitch Deck at [tGoogle Slidest](https://docs.google.com/presentation/d/1iyD63tCriSZ0QJKpnlbeG6vs3qKoVwOuAAEfo1NQOF8/edit?usp=sharing)
+
+Video demo : [YouTube](https://youtu.be/ajCN6gpiwUQ)
+
 One Liner : Traverse is an AI agent system that reverse-engineers expertise to build personalized learning paths.
 
 ## AI Agent System
